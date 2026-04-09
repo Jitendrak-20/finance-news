@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta
+    name="description"
+    content="PulseIQ is an AI-assisted financial news intelligence site with source-backed summaries, editorial controls, category pages, and a daily publishing pipeline."
+  >
+  <title>PulseIQ | AI Financial News Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="home">
+  <div class="page-shell">
+    <header class="site-header">
+      <nav class="topbar">
+        <a class="brand" href="index.html">
+          <span class="brand-mark">PI</span>
+          <span class="brand-text">PulseIQ</span>
+        </a>
+        <div class="nav-links">
+          <a data-nav href="index.html">Home</a>
+          <a data-nav href="share-market.html">Share Market</a>
+          <a data-nav href="ipo.html">IPO</a>
+          <a data-nav href="financial-news.html">Financial News</a>
+          <a data-nav href="global-markets.html">Global Markets</a>
+          <a data-nav href="admin.html">Admin</a>
+        </div>
+      </nav>
+
+      <section class="page-hero">
+        <div>
+          <p class="eyebrow">Implementation Blueprint MVP</p>
+          <h1>Fast daily finance updates with source-backed summaries.</h1>
+          <p class="page-intro">
+            This prototype follows the blueprint’s core direction: not a thin AI rewrite site, but an
+            AI-assisted financial news intelligence product with attribution, why-it-matters framing,
+            editorial review, and category-led publishing.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="admin.html">Open Editorial Admin</a>
+            <a class="button button-secondary" href="financial-news.html">Browse Published Stories</a>
+          </div>
+        </div>
+        <aside class="hero-panel-card">
+          <p class="mini-label">Recommended stack</p>
+          <h2>Next.js + Node.js + Supabase + GitHub Actions + OpenRouter + Pexels</h2>
+          <p>Simulated locally here as a functional frontend MVP with a stored editorial state.</p>
+        </aside>
+      </section>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Live MVP Metrics</p>
+          <h2>The product now behaves like a pipeline.</h2>
+          <p>These counts are driven by shared state for sources, raw items, drafts, and published articles.</p>
+        </div>
+        <div class="metric-grid" data-home-metrics></div>
+      </section>
+
+      <section class="section two-col">
+        <div>
+          <div class="section-heading">
+            <p class="eyebrow">Source Registry</p>
+            <h2>Trusted feeds first, API upgrades later.</h2>
+            <p>The blueprint recommends starting with 3 to 5 trusted sources, RSS-first, with clean attribution.</p>
+          </div>
+          <div class="mini-grid" data-source-list></div>
+        </div>
+        <div>
+          <div class="section-heading">
+            <p class="eyebrow">Latest Jobs</p>
+            <h2>Every run should leave a trail.</h2>
+            <p>Job logs are critical because free-tier automation can fail or pause silently.</p>
+          </div>
+          <div class="job-list" data-job-list></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Published Articles</p>
+          <h2>Clean editorial output with source attribution and separate SEO fields.</h2>
+          <p>Each article is structured around headline, summary, why-it-matters context, source links, image, tags, and metadata.</p>
+        </div>
+        <div class="story-grid" data-published-list></div>
+      </section>
+
+      <section class="section two-col">
+        <div class="panel-block">
+          <div class="section-heading compact">
+            <p class="eyebrow">Draft Review</p>
+            <h2>Human review remains part of v1.</h2>
+            <p>The blueprint recommends manual review during the first 30 to 60 days to control quality and hallucination risk.</p>
+          </div>
+          <div class="draft-preview" data-draft-preview></div>
+        </div>
+        <div class="panel-block">
+          <div class="section-heading compact">
+            <p class="eyebrow">Content Guardrails</p>
+            <h2>Original structure, neutral tone, no advice language.</h2>
+          </div>
+          <div class="bullet-panel">
+            <p>Use source-backed summaries rather than near-duplicate rewrites.</p>
+            <p>Reject unsupported claims, prices, dates, quotes, and exaggerated tone.</p>
+            <p>Generate separate meta title and description for each published article.</p>
+            <p>Keep category pages clean: share market, IPO, financial news, and global markets.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>PulseIQ local MVP prototype based on the implementation blueprint.</p>
+    </footer>
+  </div>
+
+  <script src="app-data.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

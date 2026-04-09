@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="PulseIQ editorial admin for running the fetch-generate-publish workflow and reviewing drafts.">
+  <title>PulseIQ Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="admin">
+  <div class="page-shell">
+    <header class="site-header">
+      <nav class="topbar">
+        <a class="brand" href="index.html">
+          <span class="brand-mark">PI</span>
+          <span class="brand-text">PulseIQ</span>
+        </a>
+        <div class="nav-links">
+          <a data-nav href="index.html">Home</a>
+          <a data-nav href="share-market.html">Share Market</a>
+          <a data-nav href="ipo.html">IPO</a>
+          <a data-nav href="financial-news.html">Financial News</a>
+          <a data-nav href="global-markets.html">Global Markets</a>
+          <a data-nav href="admin.html">Admin</a>
+        </div>
+      </nav>
+
+      <section class="page-hero">
+        <div>
+          <p class="eyebrow">Internal Admin</p>
+          <h1>Approve, edit, reject, and publish.</h1>
+          <p class="page-intro">
+            This page implements the blueprint’s simple internal admin requirement. It controls fetch,
+            draft generation, manual review, and publishing state.
+          </p>
+        </div>
+        <div class="hero-actions vertical">
+          <button class="button button-primary" data-action="fetch" type="button">Run Fetch Job</button>
+          <button class="button button-primary" data-action="generate" type="button">Generate Drafts</button>
+          <button class="button button-danger" data-action="reset" type="button">Reset Demo State</button>
+        </div>
+      </section>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="metric-grid" data-admin-metrics></div>
+      </section>
+
+      <section class="section three-col">
+        <div class="panel-block">
+          <div class="section-heading compact">
+            <p class="eyebrow">Raw Queue</p>
+            <h2>Unprocessed source items.</h2>
+          </div>
+          <div class="stack-list" data-raw-queue></div>
+        </div>
+
+        <div class="panel-block">
+          <div class="section-heading compact">
+            <p class="eyebrow">Drafts</p>
+            <h2>Stories waiting for editorial action.</h2>
+          </div>
+          <div class="stack-list" data-admin-drafts></div>
+        </div>
+
+        <div class="panel-block">
+          <div class="section-heading compact">
+            <p class="eyebrow">Editor</p>
+            <h2>Edit article copy before publish.</h2>
+          </div>
+          <form class="editor-form" data-editor-form data-article-id="">
+            <label>
+              Title
+              <input name="title" type="text" required>
+            </label>
+            <label>
+              Excerpt
+              <textarea name="excerpt" rows="4" required></textarea>
+            </label>
+            <label>
+              Body HTML
+              <textarea name="body_html" rows="12" required></textarea>
+            </label>
+            <button class="button button-primary" type="submit">Save Draft Changes</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading compact">
+          <p class="eyebrow">Job Log</p>
+          <h2>Free-tier automation needs visible retries and history.</h2>
+        </div>
+        <div class="job-list" data-admin-jobs></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>Admin is local-only in this prototype and stores state in the browser.</p>
+    </footer>
+  </div>
+
+  <script src="app-data.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

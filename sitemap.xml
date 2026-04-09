@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://pulseiq.example.com/</loc>
+  </url>
+  <url>
+    <loc>https://pulseiq.example.com/share-market.html</loc>
+  </url>
+  <url>
+    <loc>https://pulseiq.example.com/ipo.html</loc>
+  </url>
+  <url>
+    <loc>https://pulseiq.example.com/financial-news.html</loc>
+  </url>
+  <url>
+    <loc>https://pulseiq.example.com/global-markets.html</loc>
+  </url>
+  <url>
+    <loc>https://pulseiq.example.com/article.html?slug=rbi-pause-keeps-markets-focused-on-inflation-signals</loc>
+  </url>
+  <url>
+    <loc>https://pulseiq.example.com/article.html?slug=retail-appetite-gives-this-ipo-an-early-momentum-signal</loc>
+  </url>
+  <url>
+    <loc>https://pulseiq.example.com/article.html?slug=higher-bond-yields-test-global-market-confidence</loc>
+  </url>
+</urlset>
