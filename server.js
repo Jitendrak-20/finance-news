@@ -177,6 +177,55 @@ function createBody(title, rawArticle) {
   ].join("");
 }
 
+function validateDraft(article, rawArticle) {
+  const combined = `${article.title} ${article.excerpt} ${article.body_html}`.toLowerCase();
+  const issues = [];
+  const advicePatterns = [
+    /\bbuy now\b/,
+    /\bbest stock\b/,
+    /\bguaranteed gain\b/,
+    /\bstrong buy\b/,
+    /\bsell now\b/
+  ];
+  const unsupportedPatterns = [
+    /\bas of today\b/,
+    /\bconfirmed target\b/,
+    /\binsider source\b/
+  ];
+
+  if (advicePatterns.some((pattern) => pattern.test(combined))) {
+    issues.push("Contains advice-style language.");
+  }
+
+  if (unsupportedPatterns.some((pattern) => pattern.test(combined))) {
+    issues.push("Contains unsupported or exaggerated phrasing.");
+  }
+
+  if ((article.title || "").length > 80) {
+    issues.push("Headline exceeds 80 characters.");
+  }
+
+  const bodyText = String(article.body_html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const wordCount = bodyText ? bodyText.split(" ").length : 0;
+  if (wordCount < 80) {
+    issues.push("Draft is too thin and needs more context.");
+  }
+
+  if (!rawArticle || !rawArticle.original_url) {
+    issues.push("Missing source attribution.");
+  }
+
+  if (!/<h2>Why this matters<\/h2>/i.test(article.body_html || "")) {
+    issues.push("Missing 'Why this matters' section.");
+  }
+
+  return {
+    status: issues.length ? "failed" : "passed",
+    issues,
+    checked_at: new Date().toISOString()
+  };
+}
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -314,6 +363,7 @@ function buildInitialState() {
       published_at: item.published_at,
       created_at: new Date().toISOString()
     };
+    article.validation = validateDraft(article, item.raw);
     state.articles.push(article);
     const source = SOURCE_SEED.find((entry) => entry.id === item.raw.source_id);
     state.article_sources.push({
@@ -559,6 +609,7 @@ async function buildArticleFromRaw(rawArticle, state) {
     published_at: null,
     created_at: new Date().toISOString()
   };
+  article.validation = validateDraft(article, rawArticle);
 
   const articleSource = {
     id: createId("as"),
@@ -686,6 +737,12 @@ async function jsonBody(req) {
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
+function revalidateArticle(article, state) {
+  const rawArticle = state.raw_articles.find((item) => item.id === article.raw_article_id) || null;
+  article.validation = validateDraft(article, rawArticle);
+  return article.validation;
+}
+
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(payload));
@@ -796,7 +853,7 @@ async function handleApi(req, res, url) {
   }
 
   const updateMatch = pathname.match(/^\/api\/articles\/([^/]+)$/);
-  const actionMatch = pathname.match(/^\/api\/articles\/([^/]+)\/(publish|reject)$/);
+  const actionMatch = pathname.match(/^\/api\/articles\/([^/]+)\/(publish|reject|force-publish|retry-image)$/);
 
   if (req.method === "PUT" && updateMatch) {
     const articleId = decodeURIComponent(updateMatch[1]);
@@ -810,6 +867,7 @@ async function handleApi(req, res, url) {
       seo_title: body.seo_title ?? article.seo_title,
       seo_description: body.seo_description ?? article.seo_description
     });
+    revalidateArticle(article, state);
     state.jobs.unshift(createJob("edit", "success", { article_id: article.id }));
     await writeDb(state);
     return sendJson(res, 200, hydrateArticle(article, state));
@@ -821,13 +879,56 @@ async function handleApi(req, res, url) {
     const article = state.articles.find((item) => item.id === articleId);
     if (!article) return sendJson(res, 404, { error: "Article not found" });
     if (action === "publish") {
+      const validation = revalidateArticle(article, state);
+      if (validation.status !== "passed") {
+        return sendJson(res, 409, {
+          error: "Draft failed validation. Use force publish only if you intentionally want to bypass guardrails.",
+          validation
+        });
+      }
       article.status = "published";
       article.published_at = article.published_at || new Date().toISOString();
     }
     if (action === "reject") {
       article.status = "rejected";
     }
-    state.jobs.unshift(createJob(action, "success", { article_id: article.id }));
+    if (action === "force-publish") {
+      article.status = "published";
+      article.published_at = article.published_at || new Date().toISOString();
+      const validation = revalidateArticle(article, state);
+      state.jobs.unshift(createJob("force-publish", "success", {
+        article_id: article.id,
+        validation_status: validation.status,
+        validation_issues: validation.issues
+      }));
+      await writeDb(state);
+      return sendJson(res, 200, hydrateArticle(article, state));
+    }
+    if (action === "retry-image") {
+      const image = state.images.find((item) => item.article_id === article.id);
+      const nextImageUrl = await fetchImageForArticle(article);
+      if (image) {
+        image.image_url = nextImageUrl;
+        image.credit_text = process.env.PEXELS_API_KEY ? "Fetched via Pexels API retry" : "Fallback category image retry";
+      } else {
+        state.images.unshift({
+          id: createId("img"),
+          article_id: article.id,
+          provider: process.env.PEXELS_API_KEY ? "Pexels" : "Fallback",
+          image_url: nextImageUrl,
+          alt_text: `${categoryMeta(article.category).label} visual for ${article.title}`,
+          credit_text: process.env.PEXELS_API_KEY ? "Fetched via Pexels API retry" : "Fallback category image retry"
+        });
+      }
+      article.image_url = nextImageUrl;
+      state.jobs.unshift(createJob("retry-image", "success", { article_id: article.id }));
+      await writeDb(state);
+      return sendJson(res, 200, hydrateArticle(article, state));
+    }
+    state.jobs.unshift(createJob(action, "success", {
+      article_id: article.id,
+      validation_status: article.validation ? article.validation.status : "unknown"
+    }));
     await writeDb(state);
     return sendJson(res, 200, hydrateArticle(article, state));
   }

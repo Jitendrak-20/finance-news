@@ -469,6 +469,19 @@ textarea {
   color: var(--text);
 }
 
+.validation-box {
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px 16px;
+  background: var(--panel-strong);
+  color: var(--muted);
+}
+
+.validation-box ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+}
+
 .article-hero {
   display: grid;
   grid-template-columns: 1fr 0.9fr;

@@ -233,6 +233,7 @@ function bindAdminPage() {
   const jobContainer = document.querySelector("[data-admin-jobs]");
   const form = document.querySelector("[data-editor-form]");
   const metrics = document.querySelector("[data-admin-metrics]");
+  const validationBox = document.querySelector("[data-validation-box]");
 
   function selectedDraftId() {
     return form ? form.dataset.articleId : "";
@@ -244,6 +245,18 @@ function bindAdminPage() {
     form.querySelector('[name="title"]').value = article.title;
     form.querySelector('[name="excerpt"]').value = article.excerpt;
     form.querySelector('[name="body_html"]').value = article.body_html;
+    if (validationBox) {
+      const validation = article.validation || { status: "unknown", issues: [] };
+      validationBox.innerHTML = `
+        <p class="mini-label">Validation</p>
+        <p><strong>Status:</strong> ${escapeHtml(validation.status)}</p>
+        ${
+          validation.issues && validation.issues.length
+            ? `<ul>${validation.issues.map((issue) => `<li>${escapeHtml(issue)}</li>`).join("")}</ul>`
+            : "<p>No validation issues.</p>"
+        }
+      `;
+    }
   }
 
   async function render() {
@@ -297,7 +310,9 @@ function bindAdminPage() {
                     </div>
                     <div class="admin-actions">
                       <button class="button button-secondary" data-edit-id="${article.id}" type="button">Edit</button>
+                      <button class="button button-secondary" data-retry-image-id="${article.id}" type="button">Retry Image</button>
                       <button class="button button-primary" data-publish-id="${article.id}" type="button">Publish</button>
+                      <button class="button button-secondary" data-force-publish-id="${article.id}" type="button">Force Publish</button>
                       <button class="button button-danger" data-reject-id="${article.id}" type="button">Reject</button>
                     </div>
                   </article>
@@ -353,6 +368,17 @@ function bindAdminPage() {
       if (target.matches("[data-publish-id]")) {
         await PulseIQ.publishArticle(target.dataset.publishId);
         if (selectedDraftId() === target.dataset.publishId && form) form.dataset.articleId = "";
+        await render();
+      }
+
+      if (target.matches("[data-force-publish-id]")) {
+        await PulseIQ.forcePublishArticle(target.dataset.forcePublishId);
+        if (selectedDraftId() === target.dataset.forcePublishId && form) form.dataset.articleId = "";
+        await render();
+      }
+
+      if (target.matches("[data-retry-image-id]")) {
+        await PulseIQ.retryImage(target.dataset.retryImageId);
         await render();
       }
 

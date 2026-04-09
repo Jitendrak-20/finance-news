@@ -30,10 +30,14 @@ npm start
 - `GET /api/articles/:slug`
 - `PUT /api/articles/:id`
 - `POST /api/articles/:id/publish`
+- `POST /api/articles/:id/force-publish`
 - `POST /api/articles/:id/reject`
+- `POST /api/articles/:id/retry-image`
 
 ## Notes
 
 - Local state is stored in `data/db.json`
 - `robots.txt` and `sitemap.xml` are served dynamically by `server.js`
 - GitHub Actions schedule is defined in `.github/workflows/daily-news.yml`
+- Supabase table bootstrap SQL is in `supabase-schema.sql`
+- Blueprint support docs are in `docs/prompts.md`, `docs/source-policy.md`, and `docs/deployment-notes.md`

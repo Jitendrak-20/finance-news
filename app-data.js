@@ -48,6 +48,12 @@
     async rejectArticle(id) {
       return request(`/api/articles/${id}/reject`, { method: "POST" });
     },
+    async forcePublishArticle(id) {
+      return request(`/api/articles/${id}/force-publish`, { method: "POST" });
+    },
+    async retryImage(id) {
+      return request(`/api/articles/${id}/retry-image`, { method: "POST" });
+    },
     async getArticleBySlug(slug) {
       return request(`/api/articles/${encodeURIComponent(slug)}`);
     },
