@@ -133,6 +133,19 @@ function stockActionBlock(published) {
     .join("");
 }
 
+function relatedStoryItem(article) {
+  return `
+    <article class="related-item">
+      <p class="story-tag">${PulseIQ.categoryMeta(article.category).label}</p>
+      <h3><a class="headline-link" href="article.html?slug=${encodeURIComponent(article.slug)}">${escapeHtml(article.title)}</a></h3>
+      <div class="story-meta">
+        <span>${formatDate(article.published_at)}</span>
+        <span>${estimateReadTime(article)} min read</span>
+      </div>
+    </article>
+  `;
+}
+
 function marketBoard(metrics, published) {
   const latest = published.slice(0, 4);
   const blocks = [
@@ -364,43 +377,82 @@ async function renderArticlePage() {
     document.title = `${article.seo_title}`;
     const descriptionMeta = document.querySelector('meta[name="description"]');
     if (descriptionMeta) descriptionMeta.setAttribute("content", article.seo_description);
+    const related = (await PulseIQ.getPublishedArticles())
+      .filter((item) => item.slug !== article.slug)
+      .slice(0, 4);
+    const sourceNames = article.source_links.map((item) => item.source_name).join(", ");
 
     shell.innerHTML = `
-      <section class="article-hero">
-        <div>
-          <p class="eyebrow">${PulseIQ.categoryMeta(article.category).label}</p>
-          <h1>${escapeHtml(article.title)}</h1>
-          <p class="page-intro">${escapeHtml(article.excerpt)}</p>
-          <div class="story-meta">
-            <span>Published ${formatDate(article.published_at)}</span>
-            <span>SEO title stored separately</span>
+      <section class="article-topline">
+        <p class="article-breadcrumb">Home / ${escapeHtml(PulseIQ.categoryMeta(article.category).label)} / Latest Story</p>
+        <div class="article-topline-grid">
+          <div class="article-mainhead">
+            <p class="eyebrow">${PulseIQ.categoryMeta(article.category).label}</p>
+            <h1>${escapeHtml(article.title)}</h1>
+            <p class="article-deck">${escapeHtml(article.excerpt)}</p>
+            <div class="article-meta-bar">
+              <span>PulseIQ Markets Desk</span>
+              <span>${formatDate(article.published_at)}</span>
+              <span>${estimateReadTime(article)} min read</span>
+              <span>Sources: ${escapeHtml(sourceNames)}</span>
+            </div>
+            <div class="keyword-row">${(article.seo_description || article.excerpt || "")
+              .split(/[\s,]+/)
+              .filter((word) => word.length > 5)
+              .slice(0, 8)
+              .map((word) => `<span>${escapeHtml(word)}</span>`)
+              .join("")}</div>
           </div>
-          <div class="keyword-row">${(article.seo_description || article.excerpt || "")
-            .split(/[\s,]+/)
-            .filter((word) => word.length > 5)
-            .slice(0, 6)
-            .map((word) => `<span>${escapeHtml(word)}</span>`)
-            .join("")}</div>
+          <img class="article-hero-image" src="${article.image ? article.image.image_url : article.image_url}" alt="${escapeHtml(article.title)}">
         </div>
-        <img class="article-hero-image" src="${article.image ? article.image.image_url : article.image_url}" alt="${escapeHtml(article.title)}">
       </section>
-      <section class="article-layout">
-        <article class="article-body">${article.body_html}</article>
+
+      <section class="article-layout article-layout-new">
+        <article class="article-column">
+          <div class="article-body article-body-new">
+            <div class="article-kicker">
+              <strong>Why readers care:</strong> fast market context, sector relevance, source-backed interpretation, and no advice-style spin.
+            </div>
+            ${article.body_html}
+          </div>
+
+          <section class="related-stories">
+            <div class="section-heading compact">
+              <p class="eyebrow">Related Stories</p>
+              <h2>More market reads</h2>
+            </div>
+            <div class="related-grid">
+              ${related.map(relatedStoryItem).join("")}
+            </div>
+          </section>
+        </article>
+
         <aside class="article-sidebar">
-          <div class="mini-card">
+          <div class="mini-card sidebar-card">
             <p class="mini-label">Source Attribution</p>
             ${article.source_links
               .map(
                 (source) => `
-                  <p><strong>${escapeHtml(source.source_name)}</strong></p>
-                  <p>${escapeHtml(source.attribution_text)}</p>
-                  <a class="text-link" href="${source.source_url}">Original source link</a>
+                  <div class="source-block">
+                    <p><strong>${escapeHtml(source.source_name)}</strong></p>
+                    <p>${escapeHtml(source.attribution_text)}</p>
+                    <a class="text-link" href="${source.source_url}">Original source link</a>
+                  </div>
                 `
               )
               .join("")}
           </div>
-          <div class="mini-card">
-            <p class="mini-label">Guardrails</p>
+          <div class="mini-card sidebar-card">
+            <p class="mini-label">Article Snapshot</p>
+            <div class="sidebar-points">
+              <p><strong>Category:</strong> ${escapeHtml(PulseIQ.categoryMeta(article.category).label)}</p>
+              <p><strong>SEO title:</strong> stored separately</p>
+              <p><strong>Format:</strong> summary + context + why-it-matters</p>
+              <p><strong>Tone:</strong> neutral financial news</p>
+            </div>
+          </div>
+          <div class="mini-card sidebar-card">
+            <p class="mini-label">Editorial Guardrails</p>
             <p>Original summary structure, neutral tone, no unsupported dates, prices, quotes, or advice language.</p>
           </div>
         </aside>
