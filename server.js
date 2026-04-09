@@ -170,10 +170,12 @@ function createJob(jobType, status, metaJson = {}) {
 
 function createBody(title, rawArticle) {
   return [
-    `<p>${escapeHtml(rawArticle.raw_summary || "")} PulseIQ reframes the source into a neutral update with clear context and visible attribution.</p>`,
-    `<p>${escapeHtml(title)} matters because it can change how retail readers interpret near-term market positioning, policy signals, or sector sentiment. The goal is clarity, not prediction or advice.</p>`,
+    `<p>${escapeHtml(rawArticle.raw_summary || "")} PulseIQ reframes the source into a neutral financial news update with clearer market context, visible attribution, and stronger search relevance around the core topic.</p>`,
+    `<p>${escapeHtml(title)} matters because it can change how retail readers interpret near-term market positioning, policy signals, earnings expectations, sector rotation, liquidity trends, valuation sentiment, and broader financial market risk appetite.</p>`,
+    `<p>For readers tracking share market news, IPO activity, company results, banking updates, global market moves, and policy developments, the value here is not just the headline. The useful layer is the added context around what changed, why investors are paying attention, and which parts of the market could stay in focus through the day.</p>`,
+    `<p>This structure is intentionally built for richer keyword coverage around stock market news, financial news, market outlook, company updates, and investor context while staying original, source-backed, and free of promotional advice language.</p>`,
     "<h2>Why this matters</h2>",
-    "<ul><li>It turns a complex headline into a simpler market explanation.</li><li>It keeps the original source visible and traceable.</li><li>It avoids unsupported claims, price targets, and promotional language.</li></ul>"
+    "<ul><li>It turns a complex headline into a simpler market explanation.</li><li>It keeps the original source visible and traceable.</li><li>It connects the update to sectors, sentiment, liquidity, or policy impact.</li><li>It avoids unsupported claims, price targets, and promotional language.</li></ul>"
   ].join("");
 }
 
@@ -201,14 +203,18 @@ function validateDraft(article, rawArticle) {
     issues.push("Contains unsupported or exaggerated phrasing.");
   }
 
-  if ((article.title || "").length > 80) {
-    issues.push("Headline exceeds 80 characters.");
+  if ((article.title || "").length > 95) {
+    issues.push("Headline exceeds 95 characters.");
   }
 
   const bodyText = String(article.body_html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
   const wordCount = bodyText ? bodyText.split(" ").length : 0;
-  if (wordCount < 80) {
-    issues.push("Draft is too thin and needs more context.");
+  if (wordCount < 220) {
+    issues.push("Draft is too thin and needs more keyword-rich context.");
+  }
+
+  if (wordCount > 1100) {
+    issues.push("Draft is too long for the target news format.");
   }
 
   if (!rawArticle || !rawArticle.original_url) {
@@ -543,6 +549,11 @@ async function generateWithOpenRouter(rawArticle, category) {
     "You are a financial news editor. Produce an original, neutral summary.",
     "Write JSON with keys: title, excerpt, body_html, seo_title, seo_description.",
     "Constraints: source-grounded, no fabricated facts, no advice language, no copied phrasing when avoidable.",
+    "Headline should stay under 95 characters.",
+    "Excerpt should be around 35 to 55 words and keyword-rich in a natural way.",
+    "Body should be roughly 450 to 900 words in 3 to 5 short paragraphs plus a 'Why this matters' section with 4 bullet points.",
+    "Use useful finance search terms naturally, such as stock market news, financial news, IPO news, company results, market outlook, banking news, or global markets when relevant to the source.",
+    "Do not stuff keywords unnaturally and do not make investment recommendations.",
     `Category: ${category}`,
     `Source title: ${rawArticle.original_title}`,
     `Source excerpt: ${rawArticle.raw_summary}`,

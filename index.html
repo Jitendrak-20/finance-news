@@ -54,18 +54,73 @@
     </header>
 
     <main>
+      <section class="section section-tight">
+        <div class="section-label-row">
+          <p class="eyebrow">Market Desk</p>
+          <div class="news-tabs">
+            <span>Top News</span>
+            <span>Latest News</span>
+            <span>Buzzing Stocks</span>
+            <span>IPO</span>
+            <span>Global Markets</span>
+            <span>Mark to Market</span>
+          </div>
+        </div>
+      </section>
+
       <section class="section">
-        <div class="section-heading">
-          <p class="eyebrow">Live MVP Metrics</p>
-          <h2>The product now behaves like a pipeline.</h2>
-          <p>These counts are driven by shared state for sources, raw items, drafts, and published articles.</p>
+        <div class="section-heading compact">
+          <p class="eyebrow">Newsroom Snapshot</p>
+          <h2>A denser finance-news presentation for active readers.</h2>
+          <p>Modeled after the way finance users scan headlines, market action, and source-backed updates in parallel.</p>
         </div>
         <div class="metric-grid" data-home-metrics></div>
       </section>
 
+      <section class="section newsroom-grid">
+        <div class="newsroom-main">
+          <div class="section-heading compact">
+            <p class="eyebrow">Lead Story</p>
+            <h2>Top market-moving update with context.</h2>
+          </div>
+          <div data-home-lead></div>
+        </div>
+        <aside class="newsroom-side">
+          <div class="section-heading compact">
+            <p class="eyebrow">Market Action</p>
+            <h2>Fast-scan indicators.</h2>
+          </div>
+          <div class="market-board" data-market-board></div>
+        </div>
+      </section>
+
+      <section class="section three-col section-tight">
+        <div class="panel-block">
+          <div class="section-heading compact">
+            <p class="eyebrow">Stock Action</p>
+            <h2>Most active market signals.</h2>
+          </div>
+          <div class="market-action-list" data-stock-action></div>
+        </div>
+        <div class="panel-block">
+          <div class="section-heading compact">
+            <p class="eyebrow">Market News</p>
+            <h2>Fast updates with time cues.</h2>
+          </div>
+          <div class="headline-list" data-headline-list></div>
+        </div>
+        <div class="panel-block">
+          <div class="section-heading compact">
+            <p class="eyebrow">Analysis</p>
+            <h2>Deeper reads in a Mint-style column.</h2>
+          </div>
+          <div class="analysis-list" data-analysis-list></div>
+        </div>
+      </section>
+
       <section class="section two-col">
         <div>
-          <div class="section-heading">
+          <div class="section-heading compact">
             <p class="eyebrow">Source Registry</p>
             <h2>Trusted feeds first, API upgrades later.</h2>
             <p>The blueprint recommends starting with 3 to 5 trusted sources, RSS-first, with clean attribution.</p>
@@ -73,22 +128,32 @@
           <div class="mini-grid" data-source-list></div>
         </div>
         <div>
-          <div class="section-heading">
+          <div class="section-heading compact">
+            <p class="eyebrow">Latest Stories</p>
+            <h2>General discovery rail for broader reading.</h2>
+            <p>Inspired by leader sites that keep a cross-topic latest stories lane adjacent to market coverage.</p>
+          </div>
+          <div class="latest-stories" data-latest-stories></div>
+        </div>
+      </section>
+
+      <section class="section two-col">
+        <div>
+          <div class="section-heading compact">
             <p class="eyebrow">Latest Jobs</p>
             <h2>Every run should leave a trail.</h2>
             <p>Job logs are critical because free-tier automation can fail or pause silently.</p>
           </div>
           <div class="job-list" data-job-list></div>
         </div>
-      </section>
-
-      <section class="section">
-        <div class="section-heading">
-          <p class="eyebrow">Published Articles</p>
-          <h2>Clean editorial output with source attribution and separate SEO fields.</h2>
-          <p>Each article is structured around headline, summary, why-it-matters context, source links, image, tags, and metadata.</p>
+        <div>
+          <div class="section-heading compact">
+            <p class="eyebrow">Published Articles</p>
+            <h2>Full cards for deeper reading.</h2>
+            <p>Each article keeps headline, summary, why-it-matters context, source links, image, and metadata visible.</p>
+          </div>
+          <div class="story-grid" data-published-list></div>
         </div>
-        <div class="story-grid" data-published-list></div>
       </section>
 
       <section class="section two-col">

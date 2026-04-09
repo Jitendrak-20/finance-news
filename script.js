@@ -19,6 +19,10 @@ function escapeHtml(value) {
 
 function articleCard(article) {
   const meta = PulseIQ.categoryMeta(article.category);
+  const keywords = (article.seo_description || article.excerpt || "")
+    .split(/[\s,]+/)
+    .filter((word) => word.length > 5)
+    .slice(0, 4);
   return `
     <article class="story-card">
       <img class="story-image" src="${article.image ? article.image.image_url : article.image_url}" alt="${escapeHtml(article.title)}">
@@ -29,10 +33,140 @@ function articleCard(article) {
         <div class="story-meta">
           <span>Score ${article.score}</span>
           <span>${formatDate(article.published_at)}</span>
+          <span>${estimateReadTime(article)} min read</span>
         </div>
+        <div class="keyword-row">${keywords.map((keyword) => `<span>${escapeHtml(keyword)}</span>`).join("")}</div>
         <a class="text-link" href="article.html?slug=${encodeURIComponent(article.slug)}">Read article</a>
       </div>
     </article>
+  `;
+}
+
+function estimateReadTime(article) {
+  const text = String(article.body_html || article.excerpt || "").replace(/<[^>]+>/g, " ").trim();
+  const words = text ? text.split(/\s+/).length : 0;
+  return Math.max(2, Math.round(words / 220));
+}
+
+function leadCard(article) {
+  const meta = PulseIQ.categoryMeta(article.category);
+  return `
+    <article class="lead-card">
+      <img class="lead-image" src="${article.image ? article.image.image_url : article.image_url}" alt="${escapeHtml(article.title)}">
+      <div class="lead-copy">
+        <p class="story-tag">${meta.label}</p>
+        <h3>${escapeHtml(article.title)}</h3>
+        <p>${escapeHtml(article.excerpt)}</p>
+        <div class="story-meta">
+          <span>Published ${formatDate(article.published_at)}</span>
+          <span>Score ${article.score}</span>
+        </div>
+        <a class="text-link" href="article.html?slug=${encodeURIComponent(article.slug)}">Open full story</a>
+      </div>
+    </article>
+  `;
+}
+
+function headlineItem(article) {
+  const meta = PulseIQ.categoryMeta(article.category);
+  return `
+    <article class="headline-item">
+      <div>
+        <p class="story-tag">${meta.label}</p>
+        <h3><a class="headline-link" href="article.html?slug=${encodeURIComponent(article.slug)}">${escapeHtml(article.title)}</a></h3>
+      </div>
+      <div class="headline-meta">
+        <span>${formatDate(article.published_at)}</span>
+        <span>${estimateReadTime(article)} min read</span>
+      </div>
+    </article>
+  `;
+}
+
+function analysisItem(article) {
+  return `
+    <article class="analysis-item">
+      <p class="story-tag">Analysis</p>
+      <h3><a class="headline-link" href="article.html?slug=${encodeURIComponent(article.slug)}">${escapeHtml(article.title)}</a></h3>
+      <p>${escapeHtml(article.excerpt)}</p>
+      <div class="story-meta">
+        <span>${PulseIQ.categoryMeta(article.category).label}</span>
+        <span>${estimateReadTime(article)} min read</span>
+      </div>
+    </article>
+  `;
+}
+
+function latestStoryItem(article) {
+  return `
+    <article class="latest-story-item">
+      <div>
+        <h3><a class="headline-link" href="article.html?slug=${encodeURIComponent(article.slug)}">${escapeHtml(article.title)}</a></h3>
+        <p>${escapeHtml(article.excerpt)}</p>
+      </div>
+      <div class="headline-meta">
+        <span>${PulseIQ.categoryMeta(article.category).label}</span>
+        <span>${formatDate(article.published_at)}</span>
+      </div>
+    </article>
+  `;
+}
+
+function stockActionBlock(published) {
+  const list = published.slice(0, 5);
+  return list
+    .map(
+      (article, index) => `
+        <article class="market-action-item">
+          <div class="market-action-rank">${index + 1}</div>
+          <div>
+            <p class="story-tag">${PulseIQ.categoryMeta(article.category).label}</p>
+            <h3><a class="headline-link" href="article.html?slug=${encodeURIComponent(article.slug)}">${escapeHtml(article.title)}</a></h3>
+            <div class="story-meta">
+              <span>Score ${article.score}</span>
+              <span>${formatDate(article.published_at)}</span>
+            </div>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function marketBoard(metrics, published) {
+  const latest = published.slice(0, 4);
+  const blocks = [
+    ["Published", metrics.published_count],
+    ["Drafts", metrics.draft_count],
+    ["Raw Queue", metrics.pending_raw_count],
+    ["Sources", metrics.source_count]
+  ];
+
+  return `
+    <div class="market-board-grid">
+      ${blocks
+        .map(
+          ([label, value]) => `
+            <article class="market-tile">
+              <span>${label}</span>
+              <strong>${value}</strong>
+            </article>
+          `
+        )
+        .join("")}
+    </div>
+    <div class="market-list">
+      ${latest
+        .map(
+          (article) => `
+            <div class="market-row">
+              <span>${escapeHtml(PulseIQ.categoryMeta(article.category).label)}</span>
+              <strong>${escapeHtml(article.title)}</strong>
+            </div>
+          `
+        )
+        .join("")}
+    </div>
   `;
 }
 
@@ -74,6 +208,12 @@ async function renderHomePage() {
   const storyContainer = document.querySelector("[data-published-list]");
   const jobContainer = document.querySelector("[data-job-list]");
   const draftContainer = document.querySelector("[data-draft-preview]");
+  const leadContainer = document.querySelector("[data-home-lead]");
+  const headlineContainer = document.querySelector("[data-headline-list]");
+  const marketContainer = document.querySelector("[data-market-board]");
+  const stockActionContainer = document.querySelector("[data-stock-action]");
+  const analysisContainer = document.querySelector("[data-analysis-list]");
+  const latestStoriesContainer = document.querySelector("[data-latest-stories]");
 
   try {
     const dashboard = await PulseIQ.getDashboard();
@@ -93,8 +233,42 @@ async function renderHomePage() {
 
     if (storyContainer) {
       storyContainer.innerHTML = dashboard.published.length
-        ? dashboard.published.slice(0, 3).map(articleCard).join("")
+        ? dashboard.published.slice(0, 4).map(articleCard).join("")
         : `<p class="empty-state">No published articles yet.</p>`;
+    }
+
+    if (leadContainer) {
+      leadContainer.innerHTML = dashboard.published.length
+        ? leadCard(dashboard.published[0])
+        : `<p class="empty-state">No lead story available.</p>`;
+    }
+
+    if (headlineContainer) {
+      headlineContainer.innerHTML = dashboard.published.length
+        ? dashboard.published.slice(0, 6).map(headlineItem).join("")
+        : `<p class="empty-state">No headlines available.</p>`;
+    }
+
+    if (marketContainer) {
+      marketContainer.innerHTML = marketBoard(metrics, dashboard.published);
+    }
+
+    if (stockActionContainer) {
+      stockActionContainer.innerHTML = dashboard.published.length
+        ? stockActionBlock(dashboard.published)
+        : `<p class="empty-state">No stock action items available.</p>`;
+    }
+
+    if (analysisContainer) {
+      analysisContainer.innerHTML = dashboard.published.length
+        ? dashboard.published.slice(0, 3).map(analysisItem).join("")
+        : `<p class="empty-state">No analysis items available.</p>`;
+    }
+
+    if (latestStoriesContainer) {
+      latestStoriesContainer.innerHTML = dashboard.published.length
+        ? dashboard.published.slice(0, 5).map(latestStoryItem).join("")
+        : `<p class="empty-state">No latest stories available.</p>`;
     }
 
     if (jobContainer) {
@@ -127,6 +301,12 @@ async function renderHomePage() {
     setError(storyContainer, error);
     setError(jobContainer, error);
     setError(draftContainer, error);
+    setError(leadContainer, error);
+    setError(headlineContainer, error);
+    setError(marketContainer, error);
+    setError(stockActionContainer, error);
+    setError(analysisContainer, error);
+    setError(latestStoriesContainer, error);
   }
 }
 
@@ -154,7 +334,7 @@ async function renderCategoryPage() {
     const articles = await PulseIQ.getPublishedArticles(category);
     if (listEl) {
       listEl.innerHTML = articles.length
-        ? articles.map(articleCard).join("")
+        ? articles.map(headlineItem).join("")
         : `<p class="empty-state">No published stories in this category yet.</p>`;
     }
   } catch (error) {
@@ -195,6 +375,12 @@ async function renderArticlePage() {
             <span>Published ${formatDate(article.published_at)}</span>
             <span>SEO title stored separately</span>
           </div>
+          <div class="keyword-row">${(article.seo_description || article.excerpt || "")
+            .split(/[\s,]+/)
+            .filter((word) => word.length > 5)
+            .slice(0, 6)
+            .map((word) => `<span>${escapeHtml(word)}</span>`)
+            .join("")}</div>
         </div>
         <img class="article-hero-image" src="${article.image ? article.image.image_url : article.image_url}" alt="${escapeHtml(article.title)}">
       </section>
