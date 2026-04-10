@@ -1167,9 +1167,8 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-module.exports = {
-  handleApiRequest
-};
+module.exports = handleApiRequest;
+module.exports.handleApiRequest = handleApiRequest;
 
 if (require.main === module) {
   ensureDb()
