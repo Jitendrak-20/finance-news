@@ -881,8 +881,14 @@ async function serveStatic(req, res, pathname) {
   }
 }
 
+function normalizeApiPathname(pathname) {
+  if (!pathname) return "/api";
+  if (pathname === "/api" || pathname.startsWith("/api/")) return pathname;
+  return `/api${pathname.startsWith("/") ? "" : "/"}${pathname}`;
+}
+
 async function handleApi(req, res, url) {
-  const pathname = url.pathname;
+  const pathname = normalizeApiPathname(url.pathname);
   const state = await readDb();
 
   if (req.method === "GET" && pathname === "/api/health") {
