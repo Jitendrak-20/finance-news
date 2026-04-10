@@ -1160,6 +1160,12 @@ async function handleApiRequest(req, res) {
   return handleApi(req, res, url);
 }
 
+async function handleApiRoute(req, res, pathname) {
+  const currentUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+  const routeUrl = new URL(`${pathname}${currentUrl.search || ""}`, `http://${req.headers.host || "localhost"}`);
+  return handleApi(req, res, routeUrl);
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -1175,6 +1181,7 @@ const server = http.createServer(async (req, res) => {
 
 module.exports = handleApiRequest;
 module.exports.handleApiRequest = handleApiRequest;
+module.exports.handleApiRoute = handleApiRoute;
 
 if (require.main === module) {
   ensureDb()

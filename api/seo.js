@@ -1,3 +1,3 @@
-const { handleApiRequest } = require("../server");
+const { handleApiRoute } = require("../server");
 
-module.exports = (req, res) => handleApiRequest(req, res);
+module.exports = (req, res) => handleApiRoute(req, res, "/api/seo");
