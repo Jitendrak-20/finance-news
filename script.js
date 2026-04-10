@@ -31,7 +31,6 @@ function articleCard(article) {
         <h3>${escapeHtml(article.title)}</h3>
         <p>${escapeHtml(article.excerpt)}</p>
         <div class="story-meta">
-          <span>Score ${article.score}</span>
           <span>${formatDate(article.published_at)}</span>
           <span>${estimateReadTime(article)} min read</span>
         </div>
@@ -59,7 +58,7 @@ function leadCard(article) {
         <p>${escapeHtml(article.excerpt)}</p>
         <div class="story-meta">
           <span>Published ${formatDate(article.published_at)}</span>
-          <span>Score ${article.score}</span>
+          <span>${estimateReadTime(article)} min read</span>
         </div>
         <a class="text-link" href="article.html?slug=${encodeURIComponent(article.slug)}">Open full story</a>
       </div>
@@ -123,8 +122,8 @@ function stockActionBlock(published) {
             <p class="story-tag">${PulseIQ.categoryMeta(article.category).label}</p>
             <h3><a class="headline-link" href="article.html?slug=${encodeURIComponent(article.slug)}">${escapeHtml(article.title)}</a></h3>
             <div class="story-meta">
-              <span>Score ${article.score}</span>
               <span>${formatDate(article.published_at)}</span>
+              <span>${estimateReadTime(article)} min read</span>
             </div>
           </div>
         </article>
@@ -219,7 +218,6 @@ async function renderHomePage() {
   const metricContainer = document.querySelector("[data-home-metrics]");
   const sourceContainer = document.querySelector("[data-source-list]");
   const storyContainer = document.querySelector("[data-published-list]");
-  const jobContainer = document.querySelector("[data-job-list]");
   const draftContainer = document.querySelector("[data-draft-preview]");
   const leadContainer = document.querySelector("[data-home-lead]");
   const headlineContainer = document.querySelector("[data-headline-list]");
@@ -235,13 +233,18 @@ async function renderHomePage() {
     if (metricContainer) {
       metricContainer.innerHTML = `
         <article><strong>${metrics.published_count}</strong><span>published stories</span></article>
-        <article><strong>${metrics.draft_count}</strong><span>drafts awaiting review</span></article>
-        <article><strong>${metrics.pending_raw_count}</strong><span>raw items not processed yet</span></article>
+        <article><strong>${dashboard.published.filter((item) => item.category === "share-market").length}</strong><span>share market stories</span></article>
+        <article><strong>${dashboard.published.filter((item) => item.category === "ipo").length}</strong><span>IPO updates</span></article>
       `;
     }
 
     if (sourceContainer) {
-      sourceContainer.innerHTML = dashboard.sources.map(sourceListItem).join("");
+      sourceContainer.innerHTML = [
+        { source_type: "section", name: "Share Market", domain: "Stocks, banking, indices, and intraday movers" },
+        { source_type: "section", name: "IPO", domain: "Listings, subscriptions, pricing, and disclosures" },
+        { source_type: "section", name: "Financial News", domain: "Policy, company updates, rates, and macro signals" },
+        { source_type: "section", name: "Global Markets", domain: "World equities, yields, commodities, and currencies" }
+      ].map(sourceListItem).join("");
     }
 
     if (storyContainer) {
@@ -284,35 +287,24 @@ async function renderHomePage() {
         : `<p class="empty-state">No latest stories available.</p>`;
     }
 
-    if (jobContainer) {
-      jobContainer.innerHTML = dashboard.jobs.slice(0, 4).map(jobItem).join("");
-    }
-
     if (draftContainer) {
-      draftContainer.innerHTML = dashboard.drafts.length
-        ? dashboard.drafts
-            .slice(0, 2)
-            .map(
-              (article) => `
-                <article class="draft-card">
-                  <p class="story-tag">${PulseIQ.categoryMeta(article.category).label}</p>
-                  <h3>${escapeHtml(article.title)}</h3>
-                  <p>${escapeHtml(article.excerpt)}</p>
-                  <div class="story-meta">
-                    <span>Score ${article.score}</span>
-                    <span>Status ${article.status}</span>
-                  </div>
-                </article>
-              `
-            )
-            .join("")
-        : `<p class="empty-state">No drafts pending.</p>`;
+      draftContainer.innerHTML = `
+        <article class="draft-card">
+          <p class="story-tag">Fast reading</p>
+          <h3>Quick scan across headlines, sectors, and market themes</h3>
+          <p>Move from the main market desk to category pages and full stories without leaving the finance flow.</p>
+        </article>
+        <article class="draft-card">
+          <p class="story-tag">Deeper reading</p>
+          <h3>Open longform stories when a headline needs more context</h3>
+          <p>Article pages add related stories, category context, and a cleaner long-read layout for active readers.</p>
+        </article>
+      `;
     }
   } catch (error) {
     setError(metricContainer, error);
     setError(sourceContainer, error);
     setError(storyContainer, error);
-    setError(jobContainer, error);
     setError(draftContainer, error);
     setError(leadContainer, error);
     setError(headlineContainer, error);
@@ -429,7 +421,7 @@ async function renderArticlePage() {
 
         <aside class="article-sidebar">
           <div class="mini-card sidebar-card">
-            <p class="mini-label">Source Attribution</p>
+            <p class="mini-label">Sources</p>
             ${article.source_links
               .map(
                 (source) => `
@@ -443,17 +435,13 @@ async function renderArticlePage() {
               .join("")}
           </div>
           <div class="mini-card sidebar-card">
-            <p class="mini-label">Article Snapshot</p>
+            <p class="mini-label">Story Snapshot</p>
             <div class="sidebar-points">
               <p><strong>Category:</strong> ${escapeHtml(PulseIQ.categoryMeta(article.category).label)}</p>
-              <p><strong>SEO title:</strong> stored separately</p>
-              <p><strong>Format:</strong> summary + context + why-it-matters</p>
-              <p><strong>Tone:</strong> neutral financial news</p>
+              <p><strong>Format:</strong> summary, context, and related reads</p>
+              <p><strong>Read time:</strong> ${estimateReadTime(article)} min</p>
+              <p><strong>Focus:</strong> market relevance and reader clarity</p>
             </div>
-          </div>
-          <div class="mini-card sidebar-card">
-            <p class="mini-label">Editorial Guardrails</p>
-            <p>Original summary structure, neutral tone, no unsupported dates, prices, quotes, or advice language.</p>
           </div>
         </aside>
       </section>

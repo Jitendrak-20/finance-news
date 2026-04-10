@@ -37,25 +37,25 @@
       return request("/api/jobs/generate", { method: "POST" });
     },
     async updateArticle(id, fields) {
-      return request(`/api/articles/${id}`, {
+      return request(`/api/article?id=${encodeURIComponent(id)}`, {
         method: "PUT",
         body: JSON.stringify(fields)
       });
     },
     async publishArticle(id) {
-      return request(`/api/articles/${id}/publish`, { method: "POST" });
+      return request(`/api/article-action?id=${encodeURIComponent(id)}&action=publish`, { method: "POST" });
     },
     async rejectArticle(id) {
-      return request(`/api/articles/${id}/reject`, { method: "POST" });
+      return request(`/api/article-action?id=${encodeURIComponent(id)}&action=reject`, { method: "POST" });
     },
     async forcePublishArticle(id) {
-      return request(`/api/articles/${id}/force-publish`, { method: "POST" });
+      return request(`/api/article-action?id=${encodeURIComponent(id)}&action=force-publish`, { method: "POST" });
     },
     async retryImage(id) {
-      return request(`/api/articles/${id}/retry-image`, { method: "POST" });
+      return request(`/api/article-action?id=${encodeURIComponent(id)}&action=retry-image`, { method: "POST" });
     },
     async getArticleBySlug(slug) {
-      return request(`/api/articles/${encodeURIComponent(slug)}`);
+      return request(`/api/article?slug=${encodeURIComponent(slug)}`);
     },
     async getPublishedArticles(category) {
       const params = new URLSearchParams({ status: "published" });

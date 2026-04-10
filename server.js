@@ -4,7 +4,8 @@ const path = require("path");
 const crypto = require("crypto");
 
 const ROOT = __dirname;
-const DATA_DIR = path.join(ROOT, "data");
+const IS_VERCEL = Boolean(process.env.VERCEL || process.env.VERCEL_ENV || process.env.NOW_REGION);
+const DATA_DIR = IS_VERCEL ? path.join(process.env.TMPDIR || "/tmp", "pulseiq") : path.join(ROOT, "data");
 const DB_PATH = path.join(DATA_DIR, "db.json");
 
 loadEnv();
@@ -403,26 +404,97 @@ async function ensureDb() {
   }
 }
 
+function hasSupabaseConfig() {
+  return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+function shouldUseSupabaseStorage() {
+  return hasSupabaseConfig() && (IS_VERCEL || process.env.USE_SUPABASE_STORAGE === "1");
+}
+
+async function supabaseRequest(table, options = {}) {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const query = options.query ? `?${options.query}` : "";
+  const response = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/${table}${query}`, {
+    method: options.method || "GET",
+    headers: {
+      apikey: supabaseKey,
+      Authorization: `Bearer ${supabaseKey}`,
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Supabase request failed for ${table}: ${response.status} ${text}`);
+  }
+
+  if (response.status === 204) return null;
+  const contentType = response.headers.get("content-type") || "";
+  return contentType.includes("application/json") ? response.json() : response.text();
+}
+
+async function readSupabaseState() {
+  const [sources, rawArticles, articles, articleSources, images, jobs] = await Promise.all([
+    supabaseRequest("sources", { query: "select=*" }),
+    supabaseRequest("raw_articles", { query: "select=*" }),
+    supabaseRequest("articles", { query: "select=*" }),
+    supabaseRequest("article_sources", { query: "select=*" }),
+    supabaseRequest("images", { query: "select=*" }),
+    supabaseRequest("jobs", { query: "select=*" })
+  ]);
+
+  return migrateState({
+    sources,
+    raw_articles: rawArticles,
+    articles,
+    article_sources: articleSources,
+    images,
+    jobs
+  });
+}
+
 async function readDb() {
+  if (shouldUseSupabaseStorage()) {
+    const state = await readSupabaseState();
+    if (!state.sources.length && !state.raw_articles.length && !state.articles.length) {
+      const initialState = buildInitialState();
+      await writeDb(initialState);
+      return initialState;
+    }
+    return state;
+  }
+
   await ensureDb();
   const raw = await fs.readFile(DB_PATH, "utf8");
   return migrateState(JSON.parse(raw));
 }
 
 function migrateState(state) {
+  state.sources = state.sources || [];
+  state.raw_articles = state.raw_articles || [];
+  state.articles = state.articles || [];
+  state.article_sources = state.article_sources || [];
+  state.images = state.images || [];
+  state.jobs = state.jobs || [];
   const sourceMap = new Map(SOURCE_SEED.map((source) => [source.id, source]));
-  state.sources = (state.sources || []).map((source) => ({
+  state.sources = state.sources.map((source) => ({
     ...(sourceMap.get(source.id) || {}),
     ...source,
     feed_urls: (sourceMap.get(source.id) || {}).feed_urls || source.feed_urls || [source.feed_url].filter(Boolean)
   }));
+  if (!state.sources.length) {
+    state.sources = SOURCE_SEED.map((source) => ({ ...source }));
+  }
   return state;
 }
 
 async function syncStateToSupabase(state) {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !supabaseKey) return;
 
   const base = `${supabaseUrl.replace(/\/$/, "")}/rest/v1`;
   const tables = [
@@ -453,13 +525,23 @@ async function syncStateToSupabase(state) {
 }
 
 async function writeDb(state) {
-  await fs.writeFile(DB_PATH, JSON.stringify(state, null, 2), "utf8");
-  try {
-    await syncStateToSupabase(state);
-  } catch (error) {
-    console.error(error.message);
+  const nextState = migrateState(state);
+
+  if (!shouldUseSupabaseStorage()) {
+    await ensureDb();
+    await fs.writeFile(DB_PATH, JSON.stringify(nextState, null, 2), "utf8");
   }
-  return state;
+
+  if (hasSupabaseConfig()) {
+    try {
+      await syncStateToSupabase(nextState);
+    } catch (error) {
+      console.error(error.message);
+      if (shouldUseSupabaseStorage()) throw error;
+    }
+  }
+
+  return nextState;
 }
 
 function decodeXmlEntities(text) {
@@ -838,6 +920,14 @@ async function handleApi(req, res, url) {
     return sendJson(res, 200, articles);
   }
 
+  if (req.method === "GET" && pathname === "/api/article") {
+    const slug = url.searchParams.get("slug");
+    if (!slug) return sendJson(res, 400, { error: "Missing slug" });
+    const article = state.articles.find((item) => item.slug === slug);
+    if (!article) return sendJson(res, 404, { error: "Article not found" });
+    return sendJson(res, 200, hydrateArticle(article, state));
+  }
+
   if (req.method === "GET" && pathname.startsWith("/api/articles/")) {
     const slug = decodeURIComponent(pathname.replace("/api/articles/", ""));
     const article = state.articles.find((item) => item.slug === slug);
@@ -861,6 +951,118 @@ async function handleApi(req, res, url) {
     const nextState = buildInitialState();
     await writeDb(nextState);
     return sendJson(res, 200, { ok: true });
+  }
+
+  if (req.method === "PUT" && pathname === "/api/article") {
+    const articleId = url.searchParams.get("id");
+    if (!articleId) return sendJson(res, 400, { error: "Missing article id" });
+    const article = state.articles.find((item) => item.id === articleId);
+    if (!article) return sendJson(res, 404, { error: "Article not found" });
+    const body = await jsonBody(req);
+    Object.assign(article, {
+      title: body.title ?? article.title,
+      excerpt: body.excerpt ?? article.excerpt,
+      body_html: body.body_html ?? article.body_html,
+      seo_title: body.seo_title ?? article.seo_title,
+      seo_description: body.seo_description ?? article.seo_description
+    });
+    revalidateArticle(article, state);
+    state.jobs.unshift(createJob("edit", "success", { article_id: article.id }));
+    await writeDb(state);
+    return sendJson(res, 200, hydrateArticle(article, state));
+  }
+
+  if (req.method === "POST" && pathname === "/api/article-action") {
+    const articleId = url.searchParams.get("id");
+    const action = url.searchParams.get("action");
+    if (!articleId || !action) return sendJson(res, 400, { error: "Missing article id or action" });
+    const article = state.articles.find((item) => item.id === articleId);
+    if (!article) return sendJson(res, 404, { error: "Article not found" });
+
+    if (action === "publish") {
+      const validation = revalidateArticle(article, state);
+      if (validation.status !== "passed") {
+        return sendJson(res, 409, {
+          error: "Draft failed validation. Use force publish only if you intentionally want to bypass guardrails.",
+          validation
+        });
+      }
+      article.status = "published";
+      article.published_at = article.published_at || new Date().toISOString();
+    } else if (action === "reject") {
+      article.status = "rejected";
+    } else if (action === "force-publish") {
+      article.status = "published";
+      article.published_at = article.published_at || new Date().toISOString();
+      const validation = revalidateArticle(article, state);
+      state.jobs.unshift(createJob("force-publish", "success", {
+        article_id: article.id,
+        validation_status: validation.status,
+        validation_issues: validation.issues
+      }));
+      await writeDb(state);
+      return sendJson(res, 200, hydrateArticle(article, state));
+    } else if (action === "retry-image") {
+      const image = state.images.find((item) => item.article_id === article.id);
+      const nextImageUrl = await fetchImageForArticle(article);
+      if (image) {
+        image.image_url = nextImageUrl;
+        image.credit_text = process.env.PEXELS_API_KEY ? "Fetched via Pexels API retry" : "Fallback category image retry";
+      } else {
+        state.images.unshift({
+          id: createId("img"),
+          article_id: article.id,
+          provider: process.env.PEXELS_API_KEY ? "Pexels" : "Fallback",
+          image_url: nextImageUrl,
+          alt_text: `${categoryMeta(article.category).label} visual for ${article.title}`,
+          credit_text: process.env.PEXELS_API_KEY ? "Fetched via Pexels API retry" : "Fallback category image retry"
+        });
+      }
+      article.image_url = nextImageUrl;
+      state.jobs.unshift(createJob("retry-image", "success", { article_id: article.id }));
+      await writeDb(state);
+      return sendJson(res, 200, hydrateArticle(article, state));
+    } else {
+      return sendJson(res, 400, { error: "Unsupported action" });
+    }
+
+    state.jobs.unshift(createJob(action, "success", {
+      article_id: article.id,
+      validation_status: article.validation ? article.validation.status : "unknown"
+    }));
+    await writeDb(state);
+    return sendJson(res, 200, hydrateArticle(article, state));
+  }
+
+  if (req.method === "GET" && pathname === "/api/seo") {
+    const type = url.searchParams.get("type");
+    if (type === "robots") {
+      res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end(`User-agent: *\nAllow: /\n\nSitemap: ${BASE_URL}/sitemap.xml\n`);
+      return;
+    }
+    if (type === "sitemap") {
+      const articleUrls = state.articles
+        .filter((item) => item.status === "published")
+        .map((item) => `  <url>\n    <loc>${BASE_URL}/article.html?slug=${encodeURIComponent(item.slug)}</loc>\n  </url>`)
+        .join("\n");
+      const content = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url>\n    <loc>${BASE_URL}/</loc>\n  </url>\n  <url>\n    <loc>${BASE_URL}/share-market.html</loc>\n  </url>\n  <url>\n    <loc>${BASE_URL}/ipo.html</loc>\n  </url>\n  <url>\n    <loc>${BASE_URL}/financial-news.html</loc>\n  </url>\n  <url>\n    <loc>${BASE_URL}/global-markets.html</loc>\n  </url>\n${articleUrls}\n</urlset>\n`;
+      res.writeHead(200, { "Content-Type": "application/xml; charset=utf-8" });
+      res.end(content);
+      return;
+    }
+    return sendJson(res, 400, { error: "Unsupported SEO type" });
+  }
+
+  if (req.method === "GET" && pathname === "/api/cron") {
+    const authHeader = req.headers.authorization || req.headers.Authorization;
+    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return sendJson(res, 401, { error: "Unauthorized" });
+    }
+    await handleFetchJob(state);
+    await handleGenerateJob(state);
+    await writeDb(state);
+    return sendJson(res, 200, { ok: true, jobs: state.jobs.slice(0, 2) });
   }
 
   const updateMatch = pathname.match(/^\/api\/articles\/([^/]+)$/);
@@ -947,11 +1149,16 @@ async function handleApi(req, res, url) {
   return sendJson(res, 404, { error: "API route not found" });
 }
 
+async function handleApiRequest(req, res) {
+  const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  return handleApi(req, res, url);
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
     if (url.pathname.startsWith("/api/")) {
-      return await handleApi(req, res, url);
+      return await handleApiRequest(req, res);
     }
     return await serveStatic(req, res, url.pathname);
   } catch (error) {
@@ -960,13 +1167,19 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-ensureDb()
-  .then(() => {
-    server.listen(PORT, () => {
-      console.log(`PulseIQ server running at http://localhost:${PORT}`);
+module.exports = {
+  handleApiRequest
+};
+
+if (require.main === module) {
+  ensureDb()
+    .then(() => {
+      server.listen(PORT, () => {
+        console.log(`PulseIQ server running at http://localhost:${PORT}`);
+      });
+    })
+    .catch((error) => {
+      console.error(error);
+      process.exit(1);
     });
-  })
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+}
