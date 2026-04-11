@@ -480,12 +480,33 @@ async function renderArticlePage() {
 function bindAdminPage() {
   if (document.body.dataset.page !== "admin") return;
 
+  const gate = document.querySelector("[data-admin-gate]");
+  const loginForm = document.querySelector("[data-admin-login-form]");
+  const loginStatus = document.querySelector("[data-admin-login-status]");
+  const protectedShell = document.querySelectorAll("[data-admin-shell]");
   const rawContainer = document.querySelector("[data-raw-queue]");
   const draftContainer = document.querySelector("[data-admin-drafts]");
   const jobContainer = document.querySelector("[data-admin-jobs]");
   const form = document.querySelector("[data-editor-form]");
   const metrics = document.querySelector("[data-admin-metrics]");
   const validationBox = document.querySelector("[data-validation-box]");
+
+  function showAdminShell() {
+    protectedShell.forEach((element) => {
+      element.hidden = false;
+    });
+    if (gate) gate.hidden = true;
+  }
+
+  function showGate(message) {
+    protectedShell.forEach((element) => {
+      element.hidden = true;
+    });
+    if (gate) gate.hidden = false;
+    if (loginStatus && message) {
+      loginStatus.innerHTML = `<p>${escapeHtml(message)}</p>`;
+    }
+  }
 
   function selectedDraftId() {
     return form ? form.dataset.articleId : "";
@@ -582,6 +603,10 @@ function bindAdminPage() {
         openEditor(state.drafts[0]);
       }
     } catch (error) {
+      if (/unauthorized/i.test(String(error.message || ""))) {
+        showGate("Admin authorization failed. Enter the correct password.");
+        return;
+      }
       setError(rawContainer, error);
       setError(draftContainer, error);
       setError(jobContainer, error);
@@ -665,7 +690,30 @@ function bindAdminPage() {
     });
   }
 
-  render();
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(loginForm);
+      const password = String(formData.get("password") || "").trim();
+      if (!password) return;
+      PulseIQ.setAdminPassword(password);
+      try {
+        await PulseIQ.getDashboard();
+        showAdminShell();
+        await render();
+      } catch (error) {
+        PulseIQ.clearAdminPassword();
+        showGate("Incorrect password or admin access is not configured.");
+      }
+    });
+  }
+
+  if (PulseIQ.hasAdminPassword()) {
+    showAdminShell();
+    render();
+  } else {
+    showGate();
+  }
 }
 
 function setActiveNav() {

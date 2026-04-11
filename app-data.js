@@ -1,8 +1,14 @@
 (function () {
+  function adminHeaders() {
+    const password = window.localStorage.getItem("pulseiq_admin_password");
+    return password ? { "x-admin-password": password } : {};
+  }
+
   async function request(path, options = {}) {
     const response = await fetch(path, {
       headers: {
         "Content-Type": "application/json",
+        ...adminHeaders(),
         ...(options.headers || {})
       },
       ...options
@@ -24,6 +30,15 @@
   }
 
   window.PulseIQ = {
+    setAdminPassword(password) {
+      window.localStorage.setItem("pulseiq_admin_password", password);
+    },
+    clearAdminPassword() {
+      window.localStorage.removeItem("pulseiq_admin_password");
+    },
+    hasAdminPassword() {
+      return Boolean(window.localStorage.getItem("pulseiq_admin_password"));
+    },
     async ensureState() {
       return request("/api/health");
     },

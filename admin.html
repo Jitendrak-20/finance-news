@@ -12,6 +12,25 @@
 </head>
 <body data-page="admin">
   <div class="page-shell">
+    <section class="admin-gate" data-admin-gate>
+      <div class="panel-block admin-gate-card">
+        <div class="section-heading compact">
+          <p class="eyebrow">Admin Access</p>
+          <h2>Enter the admin password.</h2>
+          <p>This page is protected. Enter the configured admin password to load fetch, draft, and publish controls.</p>
+        </div>
+        <form class="editor-form" data-admin-login-form>
+          <label>
+            Password
+            <input name="password" type="password" required>
+          </label>
+          <button class="button button-primary" type="submit">Unlock Admin</button>
+          <div class="validation-box" data-admin-login-status>
+            <p>Set `ADMIN_PASSWORD` in your environment and use that password here.</p>
+          </div>
+        </form>
+      </div>
+    </section>
     <header class="site-header">
       <nav class="topbar">
         <a class="brand" href="index.html">
@@ -45,7 +64,7 @@
       </section>
     </header>
 
-    <main>
+    <main data-admin-shell hidden>
       <section class="section">
         <div class="metric-grid" data-admin-metrics></div>
       </section>
@@ -100,7 +119,7 @@
       </section>
     </main>
 
-    <footer class="site-footer">
+    <footer class="site-footer" data-admin-shell hidden>
       <p>Admin is local-only in this prototype and stores state in the browser.</p>
     </footer>
   </div>

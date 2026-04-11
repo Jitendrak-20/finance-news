@@ -67,6 +67,15 @@ textarea {
   padding-bottom: 48px;
 }
 
+.admin-gate {
+  padding: 28px 0 10px;
+}
+
+.admin-gate-card {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
 .site-header,
 .section,
 .site-footer {
