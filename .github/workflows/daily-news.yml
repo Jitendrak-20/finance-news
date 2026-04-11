@@ -1,37 +1,27 @@
-name: daily-news
+name: pulseiq-cron
 
 on:
   schedule:
-    - cron: "0 2,6,10,14 * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - run: npm ci
-
-      - name: Start API server
-        run: node server.js &
-
-      - name: Wait for health
+      - name: Trigger deployed pipeline
+        env:
+          BASE_URL: ${{ secrets.PULSEIQ_BASE_URL }}
+          CRON_SECRET: ${{ secrets.PULSEIQ_CRON_SECRET }}
         run: |
-          for i in {1..20}; do
-            if curl -fsS http://127.0.0.1:3000/api/health; then
-              exit 0
-            fi
-            sleep 2
-          done
-          exit 1
-
-      - name: Run fetch job
-        run: curl -fsS -X POST http://127.0.0.1:3000/api/jobs/fetch
-
-      - name: Run generate job
-        run: curl -fsS -X POST http://127.0.0.1:3000/api/jobs/generate
+          if [ -z "$BASE_URL" ]; then
+            echo "Missing GitHub secret: PULSEIQ_BASE_URL"
+            exit 1
+          fi
+          if [ -z "$CRON_SECRET" ]; then
+            echo "Missing GitHub secret: PULSEIQ_CRON_SECRET"
+            exit 1
+          fi
+          curl -fsS \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$BASE_URL/api/cron"

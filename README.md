@@ -40,6 +40,26 @@ npm start
 - `GET /api/seo?type=sitemap`
 - `GET /api/cron`
 
+## GitHub Actions Scheduler
+
+This project now uses GitHub Actions for quarter-hour automation instead of Vercel Cron so it works on the Vercel Hobby plan.
+
+Set these repository secrets in GitHub:
+
+```text
+PULSEIQ_BASE_URL=https://<your-project>.vercel.app
+PULSEIQ_CRON_SECRET=<same-value-as-your-vercel-cron-secret>
+```
+
+The workflow in `.github/workflows/daily-news.yml` calls:
+
+```text
+GET /api/cron
+Authorization: Bearer <CRON_SECRET>
+```
+
+every 15 minutes.
+
 ## Deploy To Vercel From Scratch
 
 1. Create a Supabase project.
@@ -82,8 +102,8 @@ PEXELS_API_KEY=<optional>
 
 - Production on Vercel should use Supabase. Local `data/db.json` is only for local development.
 - `vercel.json` rewrites `robots.txt` and `sitemap.xml` through serverless API routes.
-- `vercel.json` also schedules `/api/cron` once per day at `02:30 UTC`.
-- If `CRON_SECRET` is set, Vercel cron will send it as the `Authorization` header automatically.
+- On Hobby, Vercel cron is too limited for quarter-hour jobs, so `.github/workflows/daily-news.yml` is the scheduler for `/api/cron`.
+- `CRON_SECRET` must still be set in Vercel because `/api/cron` checks for `Authorization: Bearer <CRON_SECRET>`.
 
 ## Notes
 
