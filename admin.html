@@ -59,6 +59,7 @@
           </p>
         </div>
         <div class="hero-actions vertical">
+          <button class="button button-primary" data-action="pipeline" type="button">Run Full Batch</button>
           <button class="button button-primary" data-action="fetch" type="button">Run Fetch Job</button>
           <button class="button button-primary" data-action="generate" type="button">Generate Drafts</button>
           <button class="button button-danger" data-action="reset" type="button">Reset Demo State</button>
@@ -69,6 +70,25 @@
     <main data-admin-shell>
       <section class="section">
         <div class="metric-grid" data-admin-metrics></div>
+      </section>
+
+      <section class="section section-tight">
+        <div class="panel-block">
+          <div class="section-heading compact">
+            <p class="eyebrow">Batch Scheduler</p>
+            <h2>Quarter-hour automation for fetch to publish.</h2>
+            <p>The admin tab can run the full batch in sequence at `:00`, `:15`, `:30`, and `:45`. Each run waits for the previous step to complete before moving ahead.</p>
+          </div>
+          <div class="admin-scheduler">
+            <div class="validation-box" data-batch-status>
+              <p>Auto batch is off.</p>
+            </div>
+            <div class="hero-actions">
+              <button class="button button-primary" data-action="toggle-auto-batch" type="button">Enable Auto Batch</button>
+              <button class="button button-secondary" data-action="pipeline" type="button">Run Batch Now</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section class="section three-col">

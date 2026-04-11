@@ -51,6 +51,9 @@
     async generateDrafts() {
       return request("/api/jobs/generate", { method: "POST" });
     },
+    async runPublishingPipeline() {
+      return request("/api/jobs/pipeline", { method: "POST" });
+    },
     async updateArticle(id, fields) {
       return request(`/api/article?id=${encodeURIComponent(id)}`, {
         method: "PUT",

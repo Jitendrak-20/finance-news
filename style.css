@@ -787,6 +787,11 @@ textarea {
   padding-left: 18px;
 }
 
+.admin-scheduler {
+  display: grid;
+  gap: 16px;
+}
+
 .article-topline {
   padding: 18px 0 10px;
 }

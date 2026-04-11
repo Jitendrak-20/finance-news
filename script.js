@@ -609,9 +609,113 @@ function bindAdminPage() {
   const form = document.querySelector("[data-editor-form]");
   const metrics = document.querySelector("[data-admin-metrics]");
   const validationBox = document.querySelector("[data-validation-box]");
+  const batchStatus = document.querySelector("[data-batch-status]");
+  const autoBatchStorageKey = "pulseiq_auto_batch_enabled";
+  let autoBatchTimer = 0;
+  let autoBatchRunning = false;
 
   function selectedDraftId() {
     return form ? form.dataset.articleId : "";
+  }
+
+  function isAutoBatchEnabled() {
+    return window.localStorage.getItem(autoBatchStorageKey) === "1";
+  }
+
+  function setAutoBatchEnabled(next) {
+    if (next) {
+      window.localStorage.setItem(autoBatchStorageKey, "1");
+    } else {
+      window.localStorage.removeItem(autoBatchStorageKey);
+    }
+  }
+
+  function nextQuarterHourDate(from = new Date()) {
+    const next = new Date(from);
+    next.setSeconds(0, 0);
+    const minutes = next.getMinutes();
+    const rounded = Math.ceil((minutes + 1) / 15) * 15;
+    if (rounded >= 60) {
+      next.setHours(next.getHours() + 1, 0, 0, 0);
+    } else {
+      next.setMinutes(rounded, 0, 0);
+    }
+    return next;
+  }
+
+  function renderBatchStatus(message, details = {}) {
+    const toggleButton = document.querySelector("[data-action='toggle-auto-batch']");
+    if (toggleButton) {
+      toggleButton.textContent = isAutoBatchEnabled() ? "Disable Auto Batch" : "Enable Auto Batch";
+    }
+
+    if (!batchStatus) return;
+
+    const lines = [`<p>${escapeHtml(message)}</p>`];
+    if (details.nextRunAt) {
+      lines.push(`<p><strong>Next run:</strong> ${escapeHtml(formatDate(details.nextRunAt))}</p>`);
+    }
+    if (details.lastRunAt) {
+      lines.push(`<p><strong>Last run:</strong> ${escapeHtml(formatDate(details.lastRunAt))}</p>`);
+    }
+    if (details.generatedCount != null || details.publishedCount != null) {
+      lines.push(
+        `<p><strong>Last batch:</strong> generated ${escapeHtml(details.generatedCount ?? 0)} draft(s), force-published ${escapeHtml(details.publishedCount ?? 0)} article(s).</p>`
+      );
+    }
+    if (details.mode) {
+      lines.push(`<p><strong>Mode:</strong> ${escapeHtml(details.mode)}</p>`);
+    }
+    batchStatus.innerHTML = lines.join("");
+  }
+
+  function scheduleNextAutoBatch() {
+    window.clearTimeout(autoBatchTimer);
+    if (!isAutoBatchEnabled()) {
+      renderBatchStatus("Auto batch is off.", { mode: "Manual only" });
+      return;
+    }
+    const nextRun = nextQuarterHourDate();
+    const delay = Math.max(1000, nextRun.getTime() - Date.now());
+    renderBatchStatus("Auto batch is armed and waiting for the next quarter-hour slot.", {
+      nextRunAt: nextRun.toISOString(),
+      mode: "Runs while this admin tab stays open"
+    });
+    autoBatchTimer = window.setTimeout(() => {
+      void runPipeline("Scheduled quarter-hour batch");
+    }, delay);
+  }
+
+  async function runPipeline(triggerLabel) {
+    if (autoBatchRunning) return;
+    autoBatchRunning = true;
+    renderBatchStatus(`${triggerLabel} is running. Waiting for fetch, generate, retry image, and force publish to complete.`, {
+      mode: isAutoBatchEnabled() ? "Auto batch enabled" : "Manual run"
+    });
+
+    try {
+      const result = await PulseIQ.runPublishingPipeline();
+      await render();
+      const summary = result.summary || {};
+      renderBatchStatus(`${triggerLabel} completed.`, {
+        lastRunAt: summary.completed_at || new Date().toISOString(),
+        nextRunAt: isAutoBatchEnabled() ? (summary.next_run_at || nextQuarterHourDate().toISOString()) : "",
+        generatedCount: summary.generated_count ?? 0,
+        publishedCount: summary.force_published_count ?? 0,
+        mode: isAutoBatchEnabled() ? "Auto batch enabled" : "Manual run"
+      });
+    } catch (error) {
+      renderBatchStatus(error.message || "Batch run failed.", {
+        nextRunAt: isAutoBatchEnabled() ? nextQuarterHourDate().toISOString() : "",
+        mode: isAutoBatchEnabled() ? "Auto batch enabled" : "Manual run"
+      });
+      setError(jobContainer, error);
+    } finally {
+      autoBatchRunning = false;
+      if (isAutoBatchEnabled()) {
+        scheduleNextAutoBatch();
+      }
+    }
   }
 
   function openEditor(article) {
@@ -727,6 +831,15 @@ function bindAdminPage() {
         await render();
       }
 
+      if (target.matches("[data-action='pipeline']")) {
+        await runPipeline("Manual batch");
+      }
+
+      if (target.matches("[data-action='toggle-auto-batch']")) {
+        setAutoBatchEnabled(!isAutoBatchEnabled());
+        scheduleNextAutoBatch();
+      }
+
       if (target.matches("[data-action='reset']")) {
         await PulseIQ.resetState();
         if (form) form.dataset.articleId = "";
@@ -792,6 +905,7 @@ function bindAdminPage() {
     element.hidden = false;
   });
   render();
+  scheduleNextAutoBatch();
 }
 
 function setActiveNav() {
