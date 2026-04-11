@@ -231,6 +231,15 @@ function setError(target, error) {
   if (target) target.innerHTML = `<p class="empty-state">${escapeHtml(error.message || String(error))}</p>`;
 }
 
+function loadingBlock(message = "Loading stories...") {
+  return `
+    <div class="content-loader" aria-live="polite">
+      <div class="loader-spinner" aria-hidden="true"></div>
+      <p>${escapeHtml(message)}</p>
+    </div>
+  `;
+}
+
 async function renderHomePage() {
   if (document.body.dataset.page !== "home") return;
   const storyContainer = document.querySelector("[data-published-list]");
@@ -240,6 +249,14 @@ async function renderHomePage() {
   const stockActionContainer = document.querySelector("[data-stock-action]");
   const analysisContainer = document.querySelector("[data-analysis-list]");
   const latestStoriesContainer = document.querySelector("[data-latest-stories]");
+
+  if (storyContainer) storyContainer.innerHTML = loadingBlock("Loading published stories...");
+  if (leadContainer) leadContainer.innerHTML = loadingBlock("Loading lead story...");
+  if (headlineContainer) headlineContainer.innerHTML = loadingBlock("Loading market headlines...");
+  if (marketContainer) marketContainer.innerHTML = loadingBlock("Loading market board...");
+  if (stockActionContainer) stockActionContainer.innerHTML = loadingBlock("Loading stock action...");
+  if (analysisContainer) analysisContainer.innerHTML = loadingBlock("Loading analysis...");
+  if (latestStoriesContainer) latestStoriesContainer.innerHTML = loadingBlock("Loading latest stories...");
 
   try {
     const published = await PulseIQ.getPublishedArticles();
@@ -361,6 +378,7 @@ async function renderCategoryPage() {
 
   if (titleEl) titleEl.textContent = meta.label;
   if (introEl) introEl.textContent = intros[category] || "";
+  if (listEl) listEl.innerHTML = loadingBlock(`Loading ${meta.label} stories...`);
 
   try {
     const articles = await PulseIQ.getPublishedArticles(category);
