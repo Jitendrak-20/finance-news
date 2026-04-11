@@ -444,32 +444,6 @@ async function renderArticlePage() {
               <span>${estimateReadTime(article)} min read</span>
               <span>Sources: ${escapeHtml(sourceNames)}</span>
             </div>
-            <div class="share-row">
-              <button class="share-button" type="button" data-share="whatsapp" data-share-url="${escapeHtml(shareUrl)}" data-share-text="${escapeHtml(shareText)}">
-                ${shareIcon("whatsapp")}
-                <span>WhatsApp</span>
-              </button>
-              <button class="share-button" type="button" data-share="x" data-share-url="${escapeHtml(shareUrl)}" data-share-text="${escapeHtml(shareText)}">
-                ${shareIcon("x")}
-                <span>X</span>
-              </button>
-              <button class="share-button" type="button" data-share="linkedin" data-share-url="${escapeHtml(shareUrl)}">
-                ${shareIcon("linkedin")}
-                <span>LinkedIn</span>
-              </button>
-              <button class="share-button" type="button" data-share="telegram" data-share-url="${escapeHtml(shareUrl)}" data-share-text="${escapeHtml(shareText)}">
-                ${shareIcon("telegram")}
-                <span>Telegram</span>
-              </button>
-              <button class="share-button" type="button" data-share="copy" data-share-url="${escapeHtml(shareUrl)}">
-                ${shareIcon("copy")}
-                <span>Copy Link</span>
-              </button>
-              <button class="share-button" type="button" data-share="native" data-share-url="${escapeHtml(shareUrl)}" data-share-text="${escapeHtml(shareText)}">
-                ${shareIcon("share")}
-                <span>Share</span>
-              </button>
-            </div>
             <div class="keyword-row">${(article.seo_description || article.excerpt || "")
               .split(/[\s,]+/)
               .filter((word) => word.length > 5)
