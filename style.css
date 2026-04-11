@@ -60,7 +60,7 @@ textarea {
 }
 
 .page-shell {
-  width: min(1180px, calc(100% - 32px));
+  width: min(1100px, calc(100% - 56px));
   margin: 0 auto;
   position: relative;
   z-index: 1;
@@ -1212,7 +1212,7 @@ textarea {
 
 @media (max-width: 680px) {
   .page-shell {
-    width: min(100% - 20px, 1180px);
+    width: min(100% - 20px, 1100px);
   }
 
   .topbar {
