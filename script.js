@@ -355,30 +355,43 @@ async function renderArticlePage() {
   const shell = document.querySelector("[data-article-shell]");
   if (!shell) return;
 
+  function renderFallbackStories(stories, message) {
+    shell.innerHTML = `
+      <section class="page-hero narrow">
+        <p class="eyebrow">Article Not Available</p>
+        <h1>This story is unavailable in the current deployment.</h1>
+        <p class="page-intro">${escapeHtml(message)}</p>
+      </section>
+      <section class="section">
+        <div class="section-heading compact">
+          <p class="eyebrow">Latest Published Stories</p>
+          <h2>Continue with the latest available market coverage.</h2>
+        </div>
+        <div class="story-grid">
+          ${stories.length ? stories.map(articleCard).join("") : `<p class="empty-state">No published stories are available right now.</p>`}
+        </div>
+      </section>
+    `;
+  }
+
   try {
-    const publishedArticles = await PulseIQ.getPublishedArticles();
+    let publishedArticles = [];
+    try {
+      publishedArticles = await PulseIQ.getPublishedArticles();
+    } catch (error) {
+      renderFallbackStories([], "The article service is temporarily unavailable. Please try another story shortly.");
+      return;
+    }
+
     const article = slug
       ? publishedArticles.find((item) => item.slug === slug)
       : publishedArticles[0] || null;
 
     if (!article || article.status !== "published") {
-      const fallbackStories = publishedArticles.slice(0, 4);
-      shell.innerHTML = `
-        <section class="page-hero narrow">
-          <p class="eyebrow">Article Not Found</p>
-          <h1>This article is unavailable.</h1>
-          <p class="page-intro">The requested story may be unpublished, removed, or unavailable in the current deployment state. You can continue from the latest published stories below.</p>
-        </section>
-        <section class="section">
-          <div class="section-heading compact">
-            <p class="eyebrow">Latest Published Stories</p>
-            <h2>Continue reading from the latest desk updates.</h2>
-          </div>
-          <div class="story-grid">
-            ${fallbackStories.length ? fallbackStories.map(articleCard).join("") : `<p class="empty-state">No published stories are available right now.</p>`}
-          </div>
-        </section>
-      `;
+      renderFallbackStories(
+        publishedArticles.slice(0, 4),
+        "The requested story may be unpublished, removed, or unavailable in the current deployment state."
+      );
       return;
     }
 
@@ -460,7 +473,7 @@ async function renderArticlePage() {
       </section>
     `;
   } catch (error) {
-    setError(shell, error);
+    renderFallbackStories([], "The article could not be loaded right now.");
   }
 }
 
