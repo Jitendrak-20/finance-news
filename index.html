@@ -64,6 +64,13 @@
             <span>Mark to Market</span>
           </div>
         </div>
+        <div class="list-toolbar list-toolbar-top">
+          <label class="search-field">
+            <span class="visually-hidden">Search posts</span>
+            <input type="search" placeholder="Search posts..." list="home-search-suggestions" data-home-search>
+          </label>
+          <datalist id="home-search-suggestions" data-home-search-suggestions></datalist>
+        </div>
       </section>
 
       <section class="section newsroom-grid">
@@ -123,6 +130,17 @@
             <p>Open the full story when you want more context, background, and follow-through on a headline.</p>
           </div>
           <div class="story-grid" data-published-list></div>
+          <div class="list-toolbar list-toolbar-bottom">
+            <label class="page-size-field">
+              <span>Show</span>
+              <select data-home-page-size>
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+            </label>
+            <div class="pagination-bar" data-home-pagination></div>
+          </div>
         </div>
       </section>
     </main>

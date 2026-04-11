@@ -240,6 +240,82 @@ function loadingBlock(message = "Loading stories...") {
   `;
 }
 
+function paginationMarkup(page, totalPages) {
+  return `
+    <button class="button button-secondary" type="button" data-page-nav="prev" ${page <= 1 ? "disabled" : ""}>Previous</button>
+    <span class="pagination-label">Page ${page} of ${totalPages}</span>
+    <button class="button button-secondary" type="button" data-page-nav="next" ${page >= totalPages ? "disabled" : ""}>Next</button>
+  `;
+}
+
+function renderPaginatedCards(items, options) {
+  const {
+    container,
+    paginationContainer,
+    pageSize,
+    page,
+    renderer,
+    emptyMessage,
+    onPageChange
+  } = options;
+
+  if (!container) return { page: 1, totalPages: 1 };
+
+  if (!items.length) {
+    container.innerHTML = `<p class="empty-state">${escapeHtml(emptyMessage)}</p>`;
+    if (paginationContainer) paginationContainer.innerHTML = "";
+    return { page: 1, totalPages: 1 };
+  }
+
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const start = (safePage - 1) * pageSize;
+  const pageItems = items.slice(start, start + pageSize);
+
+  container.innerHTML = pageItems.map(renderer).join("");
+
+  if (paginationContainer) {
+    paginationContainer.innerHTML = totalPages > 1 ? paginationMarkup(safePage, totalPages) : "";
+    paginationContainer.onclick = null;
+    paginationContainer.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      const button = target.closest("[data-page-nav]");
+      if (!(button instanceof HTMLElement) || typeof onPageChange !== "function") return;
+      const direction = button.dataset.pageNav;
+      if (direction === "prev" && safePage > 1) onPageChange(safePage - 1);
+      if (direction === "next" && safePage < totalPages) onPageChange(safePage + 1);
+    }, { once: true });
+  }
+
+  return { page: safePage, totalPages };
+}
+
+function buildKeyPointsSection(article) {
+  const rawSource = article.raw_article || {};
+  const combined = `${rawSource.raw_summary || ""} ${rawSource.raw_content || ""}`.trim();
+  if (!combined) return "";
+
+  const points = combined
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean)
+    .filter((sentence, index, list) => list.indexOf(sentence) === index)
+    .slice(0, 4);
+
+  if (!points.length) return "";
+
+  return `
+    <section class="article-key-points">
+      <h2>Key Points</h2>
+      <ul>
+        ${points.map((point) => `<li>${escapeHtml(point)}</li>`).join("")}
+      </ul>
+    </section>
+  `;
+}
+
 async function renderHomePage() {
   if (document.body.dataset.page !== "home") return;
   const storyContainer = document.querySelector("[data-published-list]");
@@ -249,6 +325,13 @@ async function renderHomePage() {
   const stockActionContainer = document.querySelector("[data-stock-action]");
   const analysisContainer = document.querySelector("[data-analysis-list]");
   const latestStoriesContainer = document.querySelector("[data-latest-stories]");
+  const searchInput = document.querySelector("[data-home-search]");
+  const searchSuggestions = document.querySelector("[data-home-search-suggestions]");
+  const pageSizeSelect = document.querySelector("[data-home-page-size]");
+  const paginationContainer = document.querySelector("[data-home-pagination]");
+  let currentPage = 1;
+  let currentPageSize = Number(pageSizeSelect ? pageSizeSelect.value : 10) || 10;
+  let allPublished = [];
 
   if (storyContainer) storyContainer.innerHTML = loadingBlock("Loading published stories...");
   if (leadContainer) leadContainer.innerHTML = loadingBlock("Loading lead story...");
@@ -258,8 +341,47 @@ async function renderHomePage() {
   if (analysisContainer) analysisContainer.innerHTML = loadingBlock("Loading analysis...");
   if (latestStoriesContainer) latestStoriesContainer.innerHTML = loadingBlock("Loading latest stories...");
 
+  function renderSearchSuggestions() {
+    if (!searchSuggestions) return;
+    const term = searchInput ? searchInput.value.trim().toLowerCase() : "";
+    const matches = (term
+      ? allPublished.filter((item) => `${item.title} ${item.excerpt}`.toLowerCase().includes(term))
+      : allPublished)
+      .slice(0, 8)
+      .map((item) => item.title);
+
+    const uniqueMatches = matches.filter((title, index, list) => list.indexOf(title) === index);
+    searchSuggestions.innerHTML = uniqueMatches
+      .map((title) => `<option value="${escapeHtml(title)}"></option>`)
+      .join("");
+  }
+
+  function renderPublishedFeed() {
+    const term = searchInput ? searchInput.value.trim().toLowerCase() : "";
+    const filtered = term
+      ? allPublished.filter((item) => `${item.title} ${item.excerpt} ${PulseIQ.categoryMeta(item.category).label}`.toLowerCase().includes(term))
+      : allPublished;
+
+    const result = renderPaginatedCards(filtered, {
+      container: storyContainer,
+      paginationContainer,
+      pageSize: currentPageSize,
+      page: currentPage,
+      renderer: articleCard,
+      emptyMessage: term ? "No posts matched your search." : "No published articles yet.",
+      onPageChange: (nextPage) => {
+        currentPage = nextPage;
+        renderPublishedFeed();
+      }
+    });
+
+    currentPage = result.page;
+    renderSearchSuggestions();
+  }
+
   try {
     const published = await PulseIQ.getPublishedArticles();
+    allPublished = published;
     const metrics = {
       published_count: published.length,
       share_market_count: published.filter((item) => item.category === "share-market").length,
@@ -269,9 +391,7 @@ async function renderHomePage() {
     };
 
     if (storyContainer) {
-      storyContainer.innerHTML = published.length
-        ? published.slice(0, 4).map(articleCard).join("")
-        : `<p class="empty-state">No published articles yet.</p>`;
+      renderPublishedFeed();
     }
 
     if (leadContainer) {
@@ -315,6 +435,21 @@ async function renderHomePage() {
     setError(stockActionContainer, error);
     setError(analysisContainer, error);
     setError(latestStoriesContainer, error);
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      currentPage = 1;
+      renderPublishedFeed();
+    });
+  }
+
+  if (pageSizeSelect) {
+    pageSizeSelect.addEventListener("change", () => {
+      currentPageSize = Number(pageSizeSelect.value) || 10;
+      currentPage = 1;
+      renderPublishedFeed();
+    });
   }
 }
 
@@ -368,6 +503,11 @@ async function renderCategoryPage() {
   const titleEl = document.querySelector("[data-category-title]");
   const introEl = document.querySelector("[data-category-intro]");
   const listEl = document.querySelector("[data-category-list]");
+  const pageSizeSelect = document.querySelector("[data-category-page-size]");
+  const paginationContainer = document.querySelector("[data-category-pagination]");
+  let currentPage = 1;
+  let currentPageSize = Number(pageSizeSelect ? pageSizeSelect.value : 10) || 10;
+  let allArticles = [];
 
   const intros = {
     "share-market": "Daily coverage of market movers, sector shifts, benchmark tone, and headline context for retail readers.",
@@ -380,15 +520,37 @@ async function renderCategoryPage() {
   if (introEl) introEl.textContent = intros[category] || "";
   if (listEl) listEl.innerHTML = loadingBlock(`Loading ${meta.label} stories...`);
 
+  function renderCategoryList() {
+    const result = renderPaginatedCards(allArticles, {
+      container: listEl,
+      paginationContainer,
+      pageSize: currentPageSize,
+      page: currentPage,
+      renderer: articleCard,
+      emptyMessage: "No published stories in this category yet.",
+      onPageChange: (nextPage) => {
+        currentPage = nextPage;
+        renderCategoryList();
+      }
+    });
+
+    currentPage = result.page;
+  }
+
   try {
     const articles = await PulseIQ.getPublishedArticles(category);
-    if (listEl) {
-      listEl.innerHTML = articles.length
-        ? articles.map(headlineItem).join("")
-        : `<p class="empty-state">No published stories in this category yet.</p>`;
-    }
+    allArticles = articles;
+    renderCategoryList();
   } catch (error) {
     setError(listEl, error);
+  }
+
+  if (pageSizeSelect) {
+    pageSizeSelect.addEventListener("change", () => {
+      currentPageSize = Number(pageSizeSelect.value) || 10;
+      currentPage = 1;
+      renderCategoryList();
+    });
   }
 }
 
@@ -454,6 +616,8 @@ async function renderArticlePage() {
     const sourceNames = article.source_links.map((item) => item.source_name).join(", ");
     const shareUrl = `${window.location.origin}/article.html?slug=${encodeURIComponent(article.slug)}`;
     const shareText = `${article.title} | PulseIQ`;
+    const hasKeyPoints = /<h2>\s*Key Points\s*<\/h2>/i.test(article.body_html || "");
+    const keyPointsSection = hasKeyPoints ? "" : buildKeyPointsSection(article);
 
     shell.innerHTML = `
       <section class="article-topline">
@@ -486,20 +650,12 @@ async function renderArticlePage() {
             ${article.body_html}
           </div>
 
-          <section class="related-stories">
-            <div class="section-heading compact">
-              <p class="eyebrow">Related Stories</p>
-              <h2>More market reads</h2>
-            </div>
-            <div class="related-grid">
-              ${related.map(relatedStoryItem).join("")}
-            </div>
-          </section>
+          ${keyPointsSection}
 
           <section class="social-strip">
             <div class="section-heading compact">
               <p class="eyebrow">Share This Story</p>
-              <h2>Follow and share PulseIQ.</h2>
+              <h2>Share this article.</h2>
             </div>
             <div class="share-row social-share-row">
               <button class="share-button share-whatsapp" type="button" data-share="whatsapp" data-share-url="${escapeHtml(shareUrl)}" data-share-text="${escapeHtml(shareText)}">
@@ -518,12 +674,20 @@ async function renderArticlePage() {
                 ${shareIcon("telegram")}
                 <span>Share on Telegram</span>
               </button>
+              <button class="share-button" type="button" data-share="copy" data-share-url="${escapeHtml(shareUrl)}">
+                ${shareIcon("copy")}
+                <span>Copy Link</span>
+              </button>
             </div>
-            <div class="social-links">
-              <a class="social-link" href="https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
-              <a class="social-link" href="https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}" target="_blank" rel="noopener noreferrer">X</a>
-              <a class="social-link" href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-              <a class="social-link" href="https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}" target="_blank" rel="noopener noreferrer">Telegram</a>
+          </section>
+
+          <section class="related-stories">
+            <div class="section-heading compact">
+              <p class="eyebrow">Related Stories</p>
+              <h2>More market reads</h2>
+            </div>
+            <div class="related-grid">
+              ${related.map(relatedStoryItem).join("")}
             </div>
           </section>
         </article>

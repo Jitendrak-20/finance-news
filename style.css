@@ -638,6 +638,72 @@ textarea {
   text-decoration: none;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.list-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+.list-toolbar-top {
+  margin-top: 16px;
+}
+
+.list-toolbar-bottom {
+  justify-content: space-between;
+  margin-top: 22px;
+  margin-bottom: 0;
+}
+
+.search-field,
+.page-size-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search-field input,
+.page-size-field select {
+  border: 1px solid var(--line);
+  background: var(--panel-strong);
+  border-radius: 999px;
+  min-height: 44px;
+  padding: 0 16px;
+  color: var(--text);
+}
+
+.search-field input {
+  min-width: min(320px, 70vw);
+}
+
+.pagination-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.pagination-label {
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .keyword-row {
   display: flex;
   flex-wrap: wrap;
@@ -1047,6 +1113,26 @@ textarea {
   margin-top: 24px;
 }
 
+.article-key-points {
+  margin-top: 24px;
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.article-key-points h2 {
+  margin: 0 0 14px;
+}
+
+.article-key-points ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
 .social-strip {
   margin-top: 26px;
   padding: 22px;
@@ -1058,26 +1144,6 @@ textarea {
 
 .social-share-row {
   margin-top: 8px;
-}
-
-.social-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.social-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 38px;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.68);
-  color: var(--navy);
-  text-decoration: none;
-  font-weight: 700;
 }
 
 .related-grid {
@@ -1265,5 +1331,24 @@ textarea {
   .headline-meta {
     text-align: left;
     min-width: 0;
+  }
+
+  .list-toolbar {
+    align-items: stretch;
+  }
+
+  .list-toolbar-bottom {
+    justify-content: stretch;
+  }
+
+  .search-field,
+  .page-size-field,
+  .pagination-bar {
+    width: 100%;
+  }
+
+  .search-field input,
+  .page-size-field select {
+    width: 100%;
   }
 }
