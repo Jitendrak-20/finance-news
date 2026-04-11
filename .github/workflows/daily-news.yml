@@ -22,6 +22,6 @@ jobs:
             echo "Missing GitHub secret: PULSEIQ_CRON_SECRET"
             exit 1
           fi
-          curl -fsS \
+          curl -fsSL \
             -H "Authorization: Bearer $CRON_SECRET" \
             "$BASE_URL/api/cron"
