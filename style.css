@@ -796,6 +796,40 @@ textarea {
   background: rgba(17, 51, 77, 0.06);
 }
 
+.share-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.share-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--navy);
+  cursor: pointer;
+  transition: transform 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.share-button:hover {
+  transform: translateY(-1px);
+  background: rgba(17, 51, 77, 0.08);
+  box-shadow: var(--shadow);
+}
+
+.share-button svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  flex: 0 0 auto;
+}
+
 .article-hero-image {
   width: 100%;
   border-radius: 28px;

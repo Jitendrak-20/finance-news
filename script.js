@@ -192,6 +192,24 @@ function sourceListItem(source) {
   `;
 }
 
+function shareIcon(kind) {
+  const icons = {
+    whatsapp: `
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 3.5A11.4 11.4 0 0 0 2.9 17.2L1.5 22.5l5.4-1.4A11.4 11.4 0 1 0 20.5 3.5Zm-8.6 17a9.3 9.3 0 0 1-4.7-1.3l-.3-.2-3.2.8.9-3.1-.2-.3a9.3 9.3 0 1 1 7.5 4.1Zm5.1-6.9c-.3-.2-1.8-.9-2-.9-.3-.1-.4-.1-.6.2l-.9 1c-.1.2-.3.2-.5.1a7.7 7.7 0 0 1-3.8-3.4c-.1-.2 0-.4.1-.5l.4-.5.3-.5c.1-.1.1-.3 0-.5l-.9-2.1c-.2-.4-.4-.3-.6-.3h-.5c-.2 0-.5.1-.7.4s-1 1-1 2.3 1 2.7 1.1 2.9a10.5 10.5 0 0 0 4.1 3.8c2.5 1 2.5.7 3 .7s1.8-.7 2.1-1.3.3-1.2.2-1.3c-.1-.1-.3-.2-.6-.4Z"/></svg>`,
+    x: `
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 2H22l-6.8 7.8L23 22h-6.2l-4.9-6.4L6.3 22H3.2l7.3-8.4L1 2h6.4l4.4 5.9L18.9 2Zm-1.1 18h1.7L6.3 3.9H4.5L17.8 20Z"/></svg>`,
+    linkedin: `
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.9 8.3H3.6V20h3.3V8.3ZM5.3 2.9A1.9 1.9 0 1 0 5.3 6.7 1.9 1.9 0 0 0 5.3 2.9ZM20.4 12.7c0-3.5-1.9-5.1-4.4-5.1-2 0-2.9 1.1-3.4 1.9V8.3H9.3c0 .8 0 11.7 0 11.7h3.3v-6.5c0-.3 0-.7.1-.9.2-.7.8-1.5 1.8-1.5 1.3 0 1.9 1 1.9 2.5V20h3.3v-7.3Z"/></svg>`,
+    telegram: `
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.4 4.6 18.2 20c-.2 1.1-.8 1.3-1.6.8l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.3-8.4c.4-.4-.1-.6-.6-.2L5.8 13.4.9 11.9c-1.1-.3-1.1-1 .2-1.5l19-7.3c.9-.3 1.6.2 1.3 1.5Z"/></svg>`,
+    copy: `
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 1H6a2 2 0 0 0-2 2v12h2V3h10V1Zm3 4H10a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Zm0 16H10V7h9v14Z"/></svg>`,
+    share: `
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 16a3 3 0 0 0-2.4 1.2l-6.8-3.4a3 3 0 0 0 0-1.6l6.8-3.4A3 3 0 1 0 15 7a3 3 0 0 0 .1.8L8.3 11.2a3 3 0 1 0 0 1.6l6.8 3.4A3 3 0 1 0 18 16Z"/></svg>`
+  };
+  return icons[kind] || "";
+}
+
 function jobItem(job) {
   const meta = Object.entries(job.meta_json || {})
     .map(([key, value]) => `<span><strong>${escapeHtml(key)}:</strong> ${escapeHtml(value)}</span>`)
@@ -402,6 +420,8 @@ async function renderArticlePage() {
       .filter((item) => item.slug !== article.slug)
       .slice(0, 4);
     const sourceNames = article.source_links.map((item) => item.source_name).join(", ");
+    const shareUrl = `${window.location.origin}/article.html?slug=${encodeURIComponent(article.slug)}`;
+    const shareText = `${article.title} | PulseIQ`;
 
     shell.innerHTML = `
       <section class="article-topline">
@@ -416,6 +436,32 @@ async function renderArticlePage() {
               <span>${formatDate(article.published_at)}</span>
               <span>${estimateReadTime(article)} min read</span>
               <span>Sources: ${escapeHtml(sourceNames)}</span>
+            </div>
+            <div class="share-row">
+              <button class="share-button" type="button" data-share="whatsapp" data-share-url="${escapeHtml(shareUrl)}" data-share-text="${escapeHtml(shareText)}">
+                ${shareIcon("whatsapp")}
+                <span>WhatsApp</span>
+              </button>
+              <button class="share-button" type="button" data-share="x" data-share-url="${escapeHtml(shareUrl)}" data-share-text="${escapeHtml(shareText)}">
+                ${shareIcon("x")}
+                <span>X</span>
+              </button>
+              <button class="share-button" type="button" data-share="linkedin" data-share-url="${escapeHtml(shareUrl)}">
+                ${shareIcon("linkedin")}
+                <span>LinkedIn</span>
+              </button>
+              <button class="share-button" type="button" data-share="telegram" data-share-url="${escapeHtml(shareUrl)}" data-share-text="${escapeHtml(shareText)}">
+                ${shareIcon("telegram")}
+                <span>Telegram</span>
+              </button>
+              <button class="share-button" type="button" data-share="copy" data-share-url="${escapeHtml(shareUrl)}">
+                ${shareIcon("copy")}
+                <span>Copy Link</span>
+              </button>
+              <button class="share-button" type="button" data-share="native" data-share-url="${escapeHtml(shareUrl)}" data-share-text="${escapeHtml(shareText)}">
+                ${shareIcon("share")}
+                <span>Share</span>
+              </button>
             </div>
             <div class="keyword-row">${(article.seo_description || article.excerpt || "")
               .split(/[\s,]+/)
@@ -475,6 +521,70 @@ async function renderArticlePage() {
   } catch (error) {
     renderFallbackStories([], "The article could not be loaded right now.");
   }
+}
+
+function bindShareActions() {
+  document.addEventListener("click", async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const button = target.closest("[data-share]");
+    if (!(button instanceof HTMLElement)) return;
+
+    const type = button.dataset.share;
+    const shareUrl = button.dataset.shareUrl || window.location.href;
+    const shareText = button.dataset.shareText || document.title;
+
+    try {
+      if (type === "whatsapp") {
+        const url = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`;
+        window.open(url, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      if (type === "x") {
+        const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+        window.open(url, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      if (type === "linkedin") {
+        const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
+        window.open(url, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      if (type === "telegram") {
+        const url = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+        window.open(url, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      if (type === "copy") {
+        await navigator.clipboard.writeText(shareUrl);
+        button.querySelector("span").textContent = "Copied";
+        window.setTimeout(() => {
+          const label = button.querySelector("span");
+          if (label) label.textContent = "Copy Link";
+        }, 1600);
+        return;
+      }
+
+      if (type === "native") {
+        if (navigator.share) {
+          await navigator.share({ title: shareText, url: shareUrl });
+          return;
+        }
+        await navigator.clipboard.writeText(shareUrl);
+        button.querySelector("span").textContent = "Copied";
+        window.setTimeout(() => {
+          const label = button.querySelector("span");
+          if (label) label.textContent = "Share";
+        }, 1600);
+      }
+    } catch (error) {
+      // Ignore aborted native share actions.
+    }
+  });
 }
 
 function bindAdminPage() {
@@ -711,6 +821,7 @@ async function init() {
   await renderArticlePage();
   bindAdminPage();
   bindContactPage();
+  bindShareActions();
 }
 
 init();
