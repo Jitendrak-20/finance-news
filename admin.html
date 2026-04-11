@@ -12,7 +12,6 @@
 </head>
 <body data-page="admin">
   <div class="page-shell">
-    <!--
     <section class="admin-gate" data-admin-gate>
       <div class="panel-block admin-gate-card">
         <div class="section-heading compact">
@@ -32,8 +31,7 @@
         </form>
       </div>
     </section>
-    -->
-    <header class="site-header">
+    <header class="site-header" data-admin-shell hidden>
       <nav class="topbar">
         <a class="brand" href="index.html">
           <span class="brand-mark">PI</span>
@@ -67,7 +65,7 @@
       </section>
     </header>
 
-    <main data-admin-shell>
+    <main data-admin-shell hidden>
       <section class="section">
         <div class="metric-grid" data-admin-metrics></div>
       </section>
@@ -141,7 +139,7 @@
       </section>
     </main>
 
-    <footer class="site-footer" data-admin-shell>
+    <footer class="site-footer" data-admin-shell hidden>
       <p>Admin is local-only in this prototype and stores state in the browser.</p>
     </footer>
   </div>

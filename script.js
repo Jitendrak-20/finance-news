@@ -603,6 +603,9 @@ function bindAdminPage() {
   if (document.body.dataset.page !== "admin") return;
 
   const protectedShell = document.querySelectorAll("[data-admin-shell]");
+  const gate = document.querySelector("[data-admin-gate]");
+  const loginForm = document.querySelector("[data-admin-login-form]");
+  const loginStatus = document.querySelector("[data-admin-login-status]");
   const rawContainer = document.querySelector("[data-raw-queue]");
   const draftContainer = document.querySelector("[data-admin-drafts]");
   const jobContainer = document.querySelector("[data-admin-jobs]");
@@ -613,9 +616,18 @@ function bindAdminPage() {
   const autoBatchStorageKey = "pulseiq_auto_batch_enabled";
   let autoBatchTimer = 0;
   let autoBatchRunning = false;
+  let adminUnlocked = false;
 
   function selectedDraftId() {
     return form ? form.dataset.articleId : "";
+  }
+
+  function setAdminVisibility(unlocked) {
+    adminUnlocked = unlocked;
+    if (gate) gate.hidden = unlocked;
+    protectedShell.forEach((element) => {
+      element.hidden = !unlocked;
+    });
   }
 
   function isAutoBatchEnabled() {
@@ -671,6 +683,7 @@ function bindAdminPage() {
 
   function scheduleNextAutoBatch() {
     window.clearTimeout(autoBatchTimer);
+    if (!adminUnlocked) return;
     if (!isAutoBatchEnabled()) {
       renderBatchStatus("Auto batch is off.", { mode: "Manual only" });
       return;
@@ -813,12 +826,40 @@ function bindAdminPage() {
       setError(draftContainer, error);
       setError(jobContainer, error);
       setError(metrics, error);
+      throw error;
+    }
+  }
+
+  async function unlockAdmin(password) {
+    if (loginStatus) {
+      loginStatus.innerHTML = "<p>Verifying admin access...</p>";
+    }
+
+    PulseIQ.setAdminPassword(password);
+
+    try {
+      await render();
+      setAdminVisibility(true);
+      scheduleNextAutoBatch();
+      if (loginStatus) {
+        loginStatus.innerHTML = "<p>Access granted.</p>";
+      }
+      return true;
+    } catch (error) {
+      PulseIQ.clearAdminPassword();
+      setAdminVisibility(false);
+      window.clearTimeout(autoBatchTimer);
+      if (loginStatus) {
+        loginStatus.innerHTML = `<p>${escapeHtml(error.message || "Unable to verify admin access.")}</p>`;
+      }
+      return false;
     }
   }
 
   document.addEventListener("click", async (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
+    if (!adminUnlocked) return;
 
     try {
       if (target.matches("[data-action='fetch']")) {
@@ -901,11 +942,23 @@ function bindAdminPage() {
     });
   }
 
-  protectedShell.forEach((element) => {
-    element.hidden = false;
-  });
-  render();
-  scheduleNextAutoBatch();
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(loginForm);
+      const password = String(formData.get("password") || "");
+      if (!password) return;
+      const unlocked = await unlockAdmin(password);
+      if (unlocked) {
+        loginForm.reset();
+      }
+    });
+  }
+
+  setAdminVisibility(false);
+  if (PulseIQ.hasAdminPassword()) {
+    void unlockAdmin(window.localStorage.getItem("pulseiq_admin_password") || "");
+  }
 }
 
 function setActiveNav() {
