@@ -373,6 +373,13 @@ async function renderArticlePage() {
   const shell = document.querySelector("[data-article-shell]");
   if (!shell) return;
 
+  shell.innerHTML = `
+    <section class="article-loader" aria-live="polite">
+      <div class="loader-spinner" aria-hidden="true"></div>
+      <p>Loading article...</p>
+    </section>
+  `;
+
   function renderFallbackStories(stories, message) {
     shell.innerHTML = `
       <section class="page-hero narrow">
