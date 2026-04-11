@@ -496,6 +496,37 @@ async function renderArticlePage() {
               ${related.map(relatedStoryItem).join("")}
             </div>
           </section>
+
+          <section class="social-strip">
+            <div class="section-heading compact">
+              <p class="eyebrow">Share This Story</p>
+              <h2>Follow and share PulseIQ.</h2>
+            </div>
+            <div class="share-row social-share-row">
+              <button class="share-button share-whatsapp" type="button" data-share="whatsapp" data-share-url="${escapeHtml(shareUrl)}" data-share-text="${escapeHtml(shareText)}">
+                ${shareIcon("whatsapp")}
+                <span>Share on WhatsApp</span>
+              </button>
+              <button class="share-button share-x" type="button" data-share="x" data-share-url="${escapeHtml(shareUrl)}" data-share-text="${escapeHtml(shareText)}">
+                ${shareIcon("x")}
+                <span>Post on X</span>
+              </button>
+              <button class="share-button share-linkedin" type="button" data-share="linkedin" data-share-url="${escapeHtml(shareUrl)}">
+                ${shareIcon("linkedin")}
+                <span>Share on LinkedIn</span>
+              </button>
+              <button class="share-button share-telegram" type="button" data-share="telegram" data-share-url="${escapeHtml(shareUrl)}" data-share-text="${escapeHtml(shareText)}">
+                ${shareIcon("telegram")}
+                <span>Share on Telegram</span>
+              </button>
+            </div>
+            <div class="social-links">
+              <a class="social-link" href="https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+              <a class="social-link" href="https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}" target="_blank" rel="noopener noreferrer">X</a>
+              <a class="social-link" href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+              <a class="social-link" href="https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}" target="_blank" rel="noopener noreferrer">Telegram</a>
+            </div>
+          </section>
         </article>
 
         <aside class="article-sidebar">
