@@ -348,7 +348,7 @@ textarea {
 
 .three-col {
   grid-template-columns: 0.9fr 1fr 1.1fr;
-  align-items: start;
+  align-items: stretch;
 }
 
 .metric-grid,
@@ -464,6 +464,10 @@ textarea {
   margin: 0;
   font-size: 1.08rem;
   line-height: 1.35;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 
 .headline-link {
@@ -535,11 +539,22 @@ textarea {
   margin: 0;
   font-size: 1.05rem;
   line-height: 1.35;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 
 .analysis-item p,
 .latest-story-item p {
   margin-bottom: 0;
+}
+
+.analysis-item > p:last-of-type {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
 }
 
 .market-board-grid {
@@ -645,6 +660,33 @@ textarea {
 .panel-block,
 .bullet-panel {
   padding: 22px;
+}
+
+.panel-block {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-block .section-heading {
+  margin-bottom: 18px;
+}
+
+.panel-block .market-action-list,
+.panel-block .headline-list,
+.panel-block .analysis-list {
+  flex: 1;
+}
+
+.market-action-list,
+.analysis-list {
+  grid-auto-rows: 1fr;
+}
+
+.market-action-item,
+.analysis-item,
+.headline-item {
+  min-height: 132px;
 }
 
 .draft-preview,
