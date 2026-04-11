@@ -4,7 +4,8 @@
 
 - `npm start`
 - app listens on `PORT`
-- static pages and API are both served by `server.js`
+- local startup is handled by `server.js`
+- shared API/static runtime is in `lib/server-core.js`
 
 ## Environment
 

@@ -88,7 +88,7 @@ PEXELS_API_KEY=<optional>
 ## Notes
 
 - Local state is stored in `data/db.json`
-- `robots.txt` and `sitemap.xml` are served dynamically by `server.js`
+- `robots.txt` and `sitemap.xml` are served dynamically by `lib/server-core.js`
 - Vercel function entrypoints live in `api/`
 - Vercel deployment config is in `vercel.json`
 - GitHub Actions schedule is defined in `.github/workflows/daily-news.yml`
