@@ -242,45 +242,52 @@ async function renderHomePage() {
   const latestStoriesContainer = document.querySelector("[data-latest-stories]");
 
   try {
-    const dashboard = await PulseIQ.getDashboard();
+    const published = await PulseIQ.getPublishedArticles();
+    const metrics = {
+      published_count: published.length,
+      share_market_count: published.filter((item) => item.category === "share-market").length,
+      ipo_count: published.filter((item) => item.category === "ipo").length,
+      financial_news_count: published.filter((item) => item.category === "financial-news").length,
+      global_markets_count: published.filter((item) => item.category === "global-markets").length
+    };
 
     if (storyContainer) {
-      storyContainer.innerHTML = dashboard.published.length
-        ? dashboard.published.slice(0, 4).map(articleCard).join("")
+      storyContainer.innerHTML = published.length
+        ? published.slice(0, 4).map(articleCard).join("")
         : `<p class="empty-state">No published articles yet.</p>`;
     }
 
     if (leadContainer) {
-      leadContainer.innerHTML = dashboard.published.length
-        ? leadCard(dashboard.published[0])
+      leadContainer.innerHTML = published.length
+        ? leadCard(published[0])
         : `<p class="empty-state">No lead story available.</p>`;
     }
 
     if (headlineContainer) {
-      headlineContainer.innerHTML = dashboard.published.length
-        ? dashboard.published.slice(0, 6).map(headlineItem).join("")
+      headlineContainer.innerHTML = published.length
+        ? published.slice(0, 6).map(headlineItem).join("")
         : `<p class="empty-state">No headlines available.</p>`;
     }
 
     if (marketContainer) {
-      marketContainer.innerHTML = marketBoard(dashboard.metrics, dashboard.published);
+      marketContainer.innerHTML = marketBoard(metrics, published);
     }
 
     if (stockActionContainer) {
-      stockActionContainer.innerHTML = dashboard.published.length
-        ? stockActionBlock(dashboard.published)
+      stockActionContainer.innerHTML = published.length
+        ? stockActionBlock(published)
         : `<p class="empty-state">No stock action items available.</p>`;
     }
 
     if (analysisContainer) {
-      analysisContainer.innerHTML = dashboard.published.length
-        ? dashboard.published.slice(0, 3).map(analysisItem).join("")
+      analysisContainer.innerHTML = published.length
+        ? published.slice(0, 3).map(analysisItem).join("")
         : `<p class="empty-state">No analysis items available.</p>`;
     }
 
     if (latestStoriesContainer) {
-      latestStoriesContainer.innerHTML = dashboard.published.length
-        ? dashboard.published.slice(0, 5).map(latestStoryItem).join("")
+      latestStoriesContainer.innerHTML = published.length
+        ? published.slice(0, 5).map(latestStoryItem).join("")
         : `<p class="empty-state">No latest stories available.</p>`;
     }
   } catch (error) {
