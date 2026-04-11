@@ -356,13 +356,27 @@ async function renderArticlePage() {
   if (!shell) return;
 
   try {
-    const article = slug ? await PulseIQ.getArticleBySlug(slug) : null;
+    const publishedArticles = await PulseIQ.getPublishedArticles();
+    const article = slug
+      ? publishedArticles.find((item) => item.slug === slug)
+      : publishedArticles[0] || null;
+
     if (!article || article.status !== "published") {
+      const fallbackStories = publishedArticles.slice(0, 4);
       shell.innerHTML = `
         <section class="page-hero narrow">
           <p class="eyebrow">Article Not Found</p>
           <h1>This article is unavailable.</h1>
-          <p class="page-intro">The slug may be incorrect, unpublished, or removed from the current server state.</p>
+          <p class="page-intro">The requested story may be unpublished, removed, or unavailable in the current deployment state. You can continue from the latest published stories below.</p>
+        </section>
+        <section class="section">
+          <div class="section-heading compact">
+            <p class="eyebrow">Latest Published Stories</p>
+            <h2>Continue reading from the latest desk updates.</h2>
+          </div>
+          <div class="story-grid">
+            ${fallbackStories.length ? fallbackStories.map(articleCard).join("") : `<p class="empty-state">No published stories are available right now.</p>`}
+          </div>
         </section>
       `;
       return;
@@ -371,7 +385,7 @@ async function renderArticlePage() {
     document.title = `${article.seo_title}`;
     const descriptionMeta = document.querySelector('meta[name="description"]');
     if (descriptionMeta) descriptionMeta.setAttribute("content", article.seo_description);
-    const related = (await PulseIQ.getPublishedArticles())
+    const related = publishedArticles
       .filter((item) => item.slug !== article.slug)
       .slice(0, 4);
     const sourceNames = article.source_links.map((item) => item.source_name).join(", ");
