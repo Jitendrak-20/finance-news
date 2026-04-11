@@ -2,7 +2,7 @@ name: pulseiq-cron
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/01 * * * *"
   workflow_dispatch:
 
 jobs:
