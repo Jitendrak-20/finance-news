@@ -28,7 +28,7 @@ function articleCard(article) {
       <img class="story-image" src="${article.image ? article.image.image_url : article.image_url}" alt="${escapeHtml(article.title)}">
       <div class="story-copy">
         <p class="story-tag">${meta.label}</p>
-        <h3>${escapeHtml(article.title)}</h3>
+        <h3><a class="headline-link" href="article.html?slug=${encodeURIComponent(article.slug)}">${escapeHtml(article.title)}</a></h3>
         <p>${escapeHtml(article.excerpt)}</p>
         <div class="story-meta">
           <span>${formatDate(article.published_at)}</span>
@@ -54,7 +54,7 @@ function leadCard(article) {
       <img class="lead-image" src="${article.image ? article.image.image_url : article.image_url}" alt="${escapeHtml(article.title)}">
       <div class="lead-copy">
         <p class="story-tag">${meta.label}</p>
-        <h3>${escapeHtml(article.title)}</h3>
+        <h3><a class="headline-link" href="article.html?slug=${encodeURIComponent(article.slug)}">${escapeHtml(article.title)}</a></h3>
         <p>${escapeHtml(article.excerpt)}</p>
         <div class="story-meta">
           <span>Published ${formatDate(article.published_at)}</span>
@@ -148,10 +148,10 @@ function relatedStoryItem(article) {
 function marketBoard(metrics, published) {
   const latest = published.slice(0, 4);
   const blocks = [
-    ["Published", metrics.published_count],
-    ["Drafts", metrics.draft_count],
-    ["Raw Queue", metrics.pending_raw_count],
-    ["Sources", metrics.source_count]
+    ["Share Market", published.filter((item) => item.category === "share-market").length],
+    ["IPO Watch", published.filter((item) => item.category === "ipo").length],
+    ["Financial News", published.filter((item) => item.category === "financial-news").length],
+    ["Global Markets", published.filter((item) => item.category === "global-markets").length]
   ];
 
   return `
@@ -173,7 +173,7 @@ function marketBoard(metrics, published) {
           (article) => `
             <div class="market-row">
               <span>${escapeHtml(PulseIQ.categoryMeta(article.category).label)}</span>
-              <strong>${escapeHtml(article.title)}</strong>
+              <strong><a class="headline-link" href="article.html?slug=${encodeURIComponent(article.slug)}">${escapeHtml(article.title)}</a></strong>
             </div>
           `
         )
@@ -215,10 +215,7 @@ function setError(target, error) {
 
 async function renderHomePage() {
   if (document.body.dataset.page !== "home") return;
-  const metricContainer = document.querySelector("[data-home-metrics]");
-  const sourceContainer = document.querySelector("[data-source-list]");
   const storyContainer = document.querySelector("[data-published-list]");
-  const draftContainer = document.querySelector("[data-draft-preview]");
   const leadContainer = document.querySelector("[data-home-lead]");
   const headlineContainer = document.querySelector("[data-headline-list]");
   const marketContainer = document.querySelector("[data-market-board]");
@@ -228,24 +225,6 @@ async function renderHomePage() {
 
   try {
     const dashboard = await PulseIQ.getDashboard();
-    const metrics = dashboard.metrics;
-
-    if (metricContainer) {
-      metricContainer.innerHTML = `
-        <article><strong>${metrics.published_count}</strong><span>published stories</span></article>
-        <article><strong>${dashboard.published.filter((item) => item.category === "share-market").length}</strong><span>share market stories</span></article>
-        <article><strong>${dashboard.published.filter((item) => item.category === "ipo").length}</strong><span>IPO updates</span></article>
-      `;
-    }
-
-    if (sourceContainer) {
-      sourceContainer.innerHTML = [
-        { source_type: "section", name: "Share Market", domain: "Stocks, banking, indices, and intraday movers" },
-        { source_type: "section", name: "IPO", domain: "Listings, subscriptions, pricing, and disclosures" },
-        { source_type: "section", name: "Financial News", domain: "Policy, company updates, rates, and macro signals" },
-        { source_type: "section", name: "Global Markets", domain: "World equities, yields, commodities, and currencies" }
-      ].map(sourceListItem).join("");
-    }
 
     if (storyContainer) {
       storyContainer.innerHTML = dashboard.published.length
@@ -266,7 +245,7 @@ async function renderHomePage() {
     }
 
     if (marketContainer) {
-      marketContainer.innerHTML = marketBoard(metrics, dashboard.published);
+      marketContainer.innerHTML = marketBoard(dashboard.metrics, dashboard.published);
     }
 
     if (stockActionContainer) {
@@ -286,26 +265,8 @@ async function renderHomePage() {
         ? dashboard.published.slice(0, 5).map(latestStoryItem).join("")
         : `<p class="empty-state">No latest stories available.</p>`;
     }
-
-    if (draftContainer) {
-      draftContainer.innerHTML = `
-        <article class="draft-card">
-          <p class="story-tag">Fast reading</p>
-          <h3>Quick scan across headlines, sectors, and market themes</h3>
-          <p>Move from the main market desk to category pages and full stories without leaving the finance flow.</p>
-        </article>
-        <article class="draft-card">
-          <p class="story-tag">Deeper reading</p>
-          <h3>Open longform stories when a headline needs more context</h3>
-          <p>Article pages add related stories, category context, and a cleaner long-read layout for active readers.</p>
-        </article>
-      `;
-    }
   } catch (error) {
-    setError(metricContainer, error);
-    setError(sourceContainer, error);
     setError(storyContainer, error);
-    setError(draftContainer, error);
     setError(leadContainer, error);
     setError(headlineContainer, error);
     setError(marketContainer, error);
@@ -313,6 +274,47 @@ async function renderHomePage() {
     setError(analysisContainer, error);
     setError(latestStoriesContainer, error);
   }
+}
+
+function bindContactPage() {
+  if (document.body.dataset.page !== "contact") return;
+
+  const form = document.querySelector("[data-contact-form]");
+  const statusBox = document.querySelector("[data-contact-status]");
+  if (!form || !statusBox) return;
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const endpoint = document.body.dataset.formEndpoint;
+    if (!endpoint) {
+      statusBox.innerHTML = "<p>Add your Google Apps Script web app URL to the <strong>data-form-endpoint</strong> attribute in contact.html before using the contact form.</p>";
+      return;
+    }
+
+    const formData = new FormData(form);
+    const payload = {
+      name: String(formData.get("name") || ""),
+      email: String(formData.get("email") || ""),
+      subject: String(formData.get("subject") || ""),
+      message: String(formData.get("message") || ""),
+      submitted_at: new Date().toISOString()
+    };
+
+    statusBox.innerHTML = "<p>Submitting your query...</p>";
+
+    try {
+      const encoded = new URLSearchParams(payload);
+      await fetch(endpoint, {
+        method: "POST",
+        mode: "no-cors",
+        body: encoded
+      });
+      form.reset();
+      statusBox.innerHTML = "<p>Your query has been submitted. Check your Google Sheet for the new entry.</p>";
+    } catch (error) {
+      statusBox.innerHTML = `<p>${escapeHtml(error.message || "Unable to submit the form right now.")}</p>`;
+    }
+  });
 }
 
 async function renderCategoryPage() {
@@ -402,9 +404,6 @@ async function renderArticlePage() {
       <section class="article-layout article-layout-new">
         <article class="article-column">
           <div class="article-body article-body-new">
-            <div class="article-kicker">
-              <strong>Why readers care:</strong> fast market context, sector relevance, source-backed interpretation, and no advice-style spin.
-            </div>
             ${article.body_html}
           </div>
 
@@ -680,6 +679,7 @@ async function init() {
   await renderCategoryPage();
   await renderArticlePage();
   bindAdminPage();
+  bindContactPage();
 }
 
 init();

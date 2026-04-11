@@ -169,15 +169,66 @@ function createJob(jobType, status, metaJson = {}) {
   };
 }
 
+function splitIntoSentences(text) {
+  return String(text || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(/(?<=[.!?])\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function createBody(title, rawArticle) {
+  const keySentences = [
+    ...splitIntoSentences(rawArticle.raw_summary),
+    ...splitIntoSentences(rawArticle.raw_content)
+  ]
+    .filter((sentence, index, items) => items.indexOf(sentence) === index)
+    .slice(0, 5);
+
+  const keyPoints = keySentences.length
+    ? `<h2>Key Points</h2><ul>${keySentences.map((sentence) => `<li>${escapeHtml(sentence)}</li>`).join("")}</ul>`
+    : "";
+
   return [
     `<p>${escapeHtml(rawArticle.raw_summary || "")} PulseIQ reframes the source into a neutral financial news update with clearer market context, visible attribution, and stronger search relevance around the core topic.</p>`,
     `<p>${escapeHtml(title)} matters because it can change how retail readers interpret near-term market positioning, policy signals, earnings expectations, sector rotation, liquidity trends, valuation sentiment, and broader financial market risk appetite.</p>`,
-    `<p>For readers tracking share market news, IPO activity, company results, banking updates, global market moves, and policy developments, the value here is not just the headline. The useful layer is the added context around what changed, why investors are paying attention, and which parts of the market could stay in focus through the day.</p>`,
-    `<p>This structure is intentionally built for richer keyword coverage around stock market news, financial news, market outlook, company updates, and investor context while staying original, source-backed, and free of promotional advice language.</p>`,
-    "<h2>Why this matters</h2>",
-    "<ul><li>It turns a complex headline into a simpler market explanation.</li><li>It keeps the original source visible and traceable.</li><li>It connects the update to sectors, sentiment, liquidity, or policy impact.</li><li>It avoids unsupported claims, price targets, and promotional language.</li></ul>"
+    `<p>${escapeHtml(rawArticle.raw_content || rawArticle.raw_summary || "")} This additional context helps retain more of the source's important points instead of reducing the story to a single headline takeaway.</p>`,
+    `<p>For readers tracking share market news, IPO activity, company results, banking updates, global market moves, and policy developments, the value here is not just the headline. The useful layer is the added context around what changed, why investors are paying attention, which companies, sectors, regulators, or macro signals are involved, and what may stay in focus through the day.</p>`,
+    `<p>This structure is intentionally built for richer keyword coverage around stock market news, financial news, market outlook, company updates, investor sentiment, earnings trends, banking news, and global markets while staying original, source-backed, and free of promotional advice language.</p>`,
+    keyPoints
   ].join("");
+}
+
+function createExcerpt(rawArticle) {
+  const summary = String(rawArticle.raw_summary || "").replace(/\s+/g, " ").trim();
+  const content = String(rawArticle.raw_content || "").replace(/\s+/g, " ").trim();
+  const parts = [summary, content].filter(Boolean);
+  const merged = parts.filter((item, index) => parts.indexOf(item) === index).join(" ");
+  return merged.slice(0, 320).trim();
+}
+
+function stripWhyThisMattersSection(bodyHtml) {
+  return String(bodyHtml || "")
+    .replace(/\s*<h2>\s*Why this matters\s*<\/h2>\s*<ul>[\s\S]*?<\/ul>/i, "")
+    .trim();
+}
+
+function shouldRefreshArticleContent(article, rawArticle) {
+  if (!rawArticle) return false;
+
+  const bodyHtml = String(article.body_html || "");
+  const excerpt = String(article.excerpt || "");
+  const bodyText = bodyHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const paragraphCount = (bodyHtml.match(/<p>/g) || []).length;
+
+  return (
+    /<h2>\s*Why this matters\s*<\/h2>/i.test(bodyHtml) ||
+    !/<h2>\s*Key Points\s*<\/h2>/i.test(bodyHtml) ||
+    paragraphCount < 4 ||
+    bodyText.split(" ").filter(Boolean).length < 320 ||
+    /PulseIQ adds context, keeps attribution visible, and avoids advice-style language\./i.test(excerpt)
+  );
 }
 
 function validateDraft(article, rawArticle) {
@@ -210,20 +261,21 @@ function validateDraft(article, rawArticle) {
 
   const bodyText = String(article.body_html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
   const wordCount = bodyText ? bodyText.split(" ").length : 0;
-  if (wordCount < 220) {
-    issues.push("Draft is too thin and needs more keyword-rich context.");
+  if (wordCount < 320) {
+    issues.push("Draft is too thin and should include more of the source's important points.");
   }
 
-  if (wordCount > 1100) {
+  if (wordCount > 1400) {
     issues.push("Draft is too long for the target news format.");
+  }
+
+  const paragraphCount = (String(article.body_html || "").match(/<p>/g) || []).length;
+  if (paragraphCount < 4) {
+    issues.push("Draft needs fuller paragraph coverage.");
   }
 
   if (!rawArticle || !rawArticle.original_url) {
     issues.push("Missing source attribution.");
-  }
-
-  if (!/<h2>Why this matters<\/h2>/i.test(article.body_html || "")) {
-    issues.push("Missing 'Why this matters' section.");
   }
 
   return {
@@ -457,6 +509,76 @@ async function readSupabaseState() {
   });
 }
 
+function findTopLevelJsonObjectEnd(raw) {
+  let depth = 0;
+  let inString = false;
+  let escapeNext = false;
+  let started = false;
+
+  for (let index = 0; index < raw.length; index += 1) {
+    const char = raw[index];
+
+    if (!started) {
+      if (/\s/.test(char)) continue;
+      if (char !== "{") return -1;
+      started = true;
+      depth = 1;
+      continue;
+    }
+
+    if (inString) {
+      if (escapeNext) {
+        escapeNext = false;
+        continue;
+      }
+      if (char === "\\") {
+        escapeNext = true;
+        continue;
+      }
+      if (char === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === "\"") {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{") depth += 1;
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0) return index + 1;
+    }
+  }
+
+  return -1;
+}
+
+async function parseDbState(raw) {
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    const boundary = findTopLevelJsonObjectEnd(raw);
+    if (boundary === -1) throw error;
+
+    const recovered = raw.slice(0, boundary);
+    const trailing = raw.slice(boundary).trim();
+    const parsed = JSON.parse(recovered);
+
+    if (trailing) {
+      console.error("Recovered db.json after trimming trailing corrupted content.");
+      if (!shouldUseSupabaseStorage()) {
+        await ensureDb();
+        await fs.writeFile(DB_PATH, JSON.stringify(parsed, null, 2), "utf8");
+      }
+    }
+
+    return parsed;
+  }
+}
+
 async function readDb() {
   if (shouldUseSupabaseStorage()) {
     const state = await readSupabaseState();
@@ -470,7 +592,7 @@ async function readDb() {
 
   await ensureDb();
   const raw = await fs.readFile(DB_PATH, "utf8");
-  return migrateState(JSON.parse(raw));
+  return migrateState(await parseDbState(raw));
 }
 
 function migrateState(state) {
@@ -489,6 +611,29 @@ function migrateState(state) {
   if (!state.sources.length) {
     state.sources = SOURCE_SEED.map((source) => ({ ...source }));
   }
+
+  state.articles = state.articles.map((article) => {
+    const rawArticle = state.raw_articles.find((item) => item.id === article.raw_article_id) || null;
+    if (shouldRefreshArticleContent(article, rawArticle)) {
+      const nextArticle = {
+        ...article,
+        excerpt: createExcerpt(rawArticle),
+        body_html: createBody(article.title, rawArticle)
+      };
+      nextArticle.validation = validateDraft(nextArticle, rawArticle);
+      return nextArticle;
+    }
+
+    const cleanedBody = stripWhyThisMattersSection(article.body_html);
+    if (cleanedBody !== article.body_html) {
+      const nextArticle = { ...article, body_html: cleanedBody };
+      nextArticle.validation = validateDraft(nextArticle, rawArticle);
+      return nextArticle;
+    }
+
+    return article;
+  });
+
   return state;
 }
 
@@ -498,7 +643,17 @@ async function syncStateToSupabase(state) {
 
   const base = `${supabaseUrl.replace(/\/$/, "")}/rest/v1`;
   const tables = [
-    ["sources", state.sources],
+    [
+      "sources",
+      state.sources.map((item) => ({
+        id: item.id,
+        name: item.name,
+        domain: item.domain,
+        feed_url: item.feed_url,
+        source_type: item.source_type,
+        active: item.active
+      }))
+    ],
     ["raw_articles", state.raw_articles],
     ["articles", state.articles],
     ["article_sources", state.article_sources],
@@ -632,8 +787,11 @@ async function generateWithOpenRouter(rawArticle, category) {
     "Write JSON with keys: title, excerpt, body_html, seo_title, seo_description.",
     "Constraints: source-grounded, no fabricated facts, no advice language, no copied phrasing when avoidable.",
     "Headline should stay under 95 characters.",
-    "Excerpt should be around 35 to 55 words and keyword-rich in a natural way.",
-    "Body should be roughly 450 to 900 words in 3 to 5 short paragraphs plus a 'Why this matters' section with 4 bullet points.",
+    "Excerpt should be around 40 to 70 words and should mention the most important development clearly.",
+    "Body should be roughly 550 to 1100 words in at least 4 short paragraphs.",
+    "Cover as many important source points as are supported by the source, including key companies, institutions, numbers, dates, market moves, and context when available.",
+    "Do not collapse the article into one idea if the source contains multiple material points.",
+    "Include a short <h2>Key Points</h2> section with 3 to 5 bullet points summarizing the most important facts from the source.",
     "Use useful finance search terms naturally, such as stock market news, financial news, IPO news, company results, market outlook, banking news, or global markets when relevant to the source.",
     "Do not stuff keywords unnaturally and do not make investment recommendations.",
     `Category: ${category}`,

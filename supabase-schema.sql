@@ -3,6 +3,7 @@ create table if not exists sources (
   name text not null,
   domain text not null,
   feed_url text,
+  feed_urls jsonb,
   source_type text not null,
   active boolean not null default true
 );
